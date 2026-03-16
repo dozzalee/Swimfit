@@ -255,6 +255,37 @@
       <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">📥 데이터 불러오기</button>
       <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
     </div>
+
+    <!-- 구글 시트 연동 -->
+    <div class="card" style="margin-top:1.25rem;border-color:rgba(26,95,122,0.3)">
+      <h2>📊 구글 시트 연동</h2>
+      <div class="field" style="margin-bottom:12px">
+        <label>Apps Script 웹앱 URL</label>
+        <input type="text" id="sheet-url" placeholder="https://script.google.com/macros/s/…/exec" oninput="saveSheetUrl()">
+        <span style="font-size:11px;color:var(--muted);margin-top:4px">설정 방법을 모르면 아래 '설정 방법 보기' 를 눌러보세요</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="btn btn-primary" style="width:auto" onclick="syncToSheet()">⬆️ 앱 → 시트로 내보내기</button>
+        <button class="btn btn-outline" onclick="syncFromSheet()">⬇️ 시트 → 앱으로 가져오기</button>
+      </div>
+      <div id="sync-status" style="font-size:13px;color:var(--muted)"></div>
+      <hr class="divider" style="margin:12px 0">
+      <details>
+        <summary style="font-size:13px;font-weight:500;color:var(--ocean);cursor:pointer">⚙️ Apps Script 설정 방법 보기</summary>
+        <div style="font-size:13px;color:var(--text);line-height:1.8;margin-top:12px;padding:12px;background:var(--ocean-light);border-radius:8px">
+          <b>1단계</b> — 구글 시트 열기<br>
+          <b>2단계</b> — 상단 메뉴 [확장 프로그램] → [Apps Script] 클릭<br>
+          <b>3단계</b> — 열린 창에 있는 기존 코드 전부 지우고, 제가 드린 <code>apps-script.gs</code> 파일 내용 전체 붙여넣기<br>
+          <b>4단계</b> — 💾 저장 버튼 클릭<br>
+          <b>5단계</b> — [배포] → [새 배포] 클릭<br>
+          <b>6단계</b> — 유형: <b>웹 앱</b> 선택<br>
+          <b>7단계</b> — "다음 사용자로 실행": <b>나(내 계정)</b> 선택<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"액세스 권한": <b>모든 사람</b> 선택<br>
+          <b>8단계</b> — [배포] 클릭 → 권한 허용 → URL 복사<br>
+          <b>9단계</b> — 복사한 URL을 위 입력칸에 붙여넣기 ✅
+        </div>
+      </details>
+    </div>
   </div><!-- /admin-panel -->
 </div><!-- /page-admin -->
 
@@ -384,7 +415,7 @@
     document.getElementById('page-' + p).classList.add('active');
     btn.classList.add('active');
     if (p === 'search') { renderSearchTags(); populateSearchDropdowns(); }
-    if (p === 'admin') { renderAdminTags(); renderBrandList(); }
+    if (p === 'admin') { renderAdminTags(); renderBrandList(); loadSheetUrlInput(); }
   }
 
   // ── 태그 ──
@@ -815,6 +846,130 @@
 
     if (!added) { toast('사이즈가 입력된 데이터가 없어요'); return; }
     saveDB(); hideAddEntry(); renderBrandList();
+  }
+
+  // ── 구글 시트 연동 ──
+  function getSheetUrl() {
+    return localStorage.getItem('swimfit-sheet-url') || '';
+  }
+  function saveSheetUrl() {
+    const url = document.getElementById('sheet-url').value.trim();
+    localStorage.setItem('swimfit-sheet-url', url);
+  }
+  function loadSheetUrlInput() {
+    const el = document.getElementById('sheet-url');
+    if (el) el.value = getSheetUrl();
+  }
+
+  function setSyncStatus(msg, isError) {
+    const el = document.getElementById('sync-status');
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = isError ? 'var(--coral)' : 'var(--ocean)';
+  }
+
+  // 브랜드/모델 이름을 id로 역조회 (없으면 새로 만들기)
+  function ensureBrand(name) {
+    const existing = Object.keys(db.brands).find(id => db.brands[id].name === name);
+    if (existing) return existing;
+    const id = 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+    db.brands[id] = { name };
+    return id;
+  }
+  function ensureModel(brandId, modelName) {
+    if (!modelName || modelName === '브랜드 전체') return null;
+    const existing = Object.keys(db.models).find(id =>
+      db.models[id].brandId === brandId && db.models[id].name === modelName
+    );
+    if (existing) return existing;
+    const id = 'm_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+    db.models[id] = { brandId, name: modelName, note: '' };
+    return id;
+  }
+
+  // 앱 db → 시트용 배열로 변환
+  function dbToSheetEntries() {
+    return db.entries.map(e => ({
+      brandName: db.brands[e.brandId]?.name || '',
+      modelName: e.modelId && db.models[e.modelId] ? db.models[e.modelId].name : '',
+      size:      e.size  || '',
+      fit:       e.fit   || 'fit',
+      height:    e.height || '',
+      weight:    e.weight || '',
+      torso:     e.torso  || '',
+      bust:      e.bust   || '',
+      waist:     e.waist  || '',
+      hip:       e.hip    || '',
+      tags:      e.tags   || [],
+      memo:      e.memo   || '',
+      note:      e.note   || '',
+    }));
+  }
+
+  // 시트 rows → 앱 db에 반영
+  function sheetEntriesToDb(sheetEntries) {
+    const newEntries = [];
+    sheetEntries.forEach(e => {
+      if (!e.brandName || !e.size) return;
+      const bid = ensureBrand(e.brandName);
+      const mid = ensureModel(bid, e.modelName);
+      newEntries.push({
+        brandId: bid,
+        modelId: mid,
+        size:    e.size,
+        fit:     e.fit || 'fit',
+        height:  e.height ? parseFloat(e.height) : undefined,
+        weight:  e.weight ? parseFloat(e.weight) : undefined,
+        torso:   e.torso  ? parseFloat(e.torso)  : undefined,
+        bust:    e.bust   ? parseFloat(e.bust)   : undefined,
+        waist:   e.waist  ? parseFloat(e.waist)  : undefined,
+        hip:     e.hip    ? parseFloat(e.hip)    : undefined,
+        tags:    Array.isArray(e.tags) ? e.tags : (e.tags ? String(e.tags).split(',').map(t=>t.trim()).filter(Boolean) : []),
+        memo:    e.memo  || '',
+        note:    e.note  || '',
+      });
+    });
+    return newEntries;
+  }
+
+  // ⬆️ 앱 → 시트
+  async function syncToSheet() {
+    const url = getSheetUrl();
+    if (!url) { setSyncStatus('⚠️ 먼저 Apps Script URL을 입력해 주세요', true); return; }
+    setSyncStatus('⏳ 시트로 내보내는 중...');
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'sync', entries: dbToSheetEntries() }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setSyncStatus(`✅ 완료! ${data.count}건을 시트에 내보냈어요 (${new Date().toLocaleTimeString()})`);
+      toast('시트 내보내기 완료!');
+    } catch(err) {
+      setSyncStatus('❌ 오류: ' + err.message, true);
+    }
+  }
+
+  // ⬇️ 시트 → 앱
+  async function syncFromSheet() {
+    const url = getSheetUrl();
+    if (!url) { setSyncStatus('⚠️ 먼저 Apps Script URL을 입력해 주세요', true); return; }
+    setSyncStatus('⏳ 시트에서 가져오는 중...');
+    try {
+      const res  = await fetch(url + '?action=read');
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      const newEntries = sheetEntriesToDb(data.entries);
+      db.entries = newEntries;
+      saveDB();
+      renderBrandList();
+      populateSearchDropdowns();
+      setSyncStatus(`✅ 완료! 시트에서 ${newEntries.length}건을 가져왔어요 (${new Date().toLocaleTimeString()})`);
+      toast('시트 가져오기 완료!');
+    } catch(err) {
+      setSyncStatus('❌ 오류: ' + err.message, true);
+    }
   }
 
   // ── 수정 모달 ──
