@@ -73,6 +73,40 @@
     .section-label{font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px;margin-top:14px}
     .data-mgmt-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:1rem;padding:1rem;background:var(--ocean-light);border-radius:var(--radius)}
     .data-mgmt-row p{font-size:12px;color:var(--muted);width:100%;margin-bottom:8px}
+
+    /* 브랜드 아코디언 */
+    .brand-block{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;overflow:hidden}
+    .brand-block-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;user-select:none}
+    .brand-block-header:hover{background:var(--ocean-light)}
+    .brand-block-title{font-weight:500;color:var(--text);display:flex;align-items:center;gap:8px}
+    .brand-block-meta{font-size:12px;color:var(--muted)}
+    .brand-block-actions{display:flex;align-items:center;gap:6px}
+    .chevron{font-size:12px;color:var(--muted);transition:transform .2s}
+    .chevron.open{transform:rotate(180deg)}
+    .entry-list{display:none;border-top:1px solid var(--border)}
+    .entry-list.open{display:block}
+    .entry-item{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+    .entry-item:last-child{border-bottom:none}
+    .entry-item:hover{background:var(--ocean-light)}
+    .entry-item-left{display:flex;flex-direction:column;gap:3px}
+    .entry-size-badge{display:inline-flex;align-items:center;gap:6px}
+    .size-pill{font-size:13px;font-weight:500;color:var(--ocean);background:var(--ocean-light);padding:2px 10px;border-radius:20px}
+    .fit-badge{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
+    .fit-fit{background:#e6f4ed;color:#1a7a45}
+    .fit-small{background:#fff3e0;color:#b35a00}
+    .fit-vsmall{background:#fde8cc;color:#8c3a00}
+    .fit-big{background:#e8eaf6;color:#303f9f}
+    .fit-vbig{background:#ede7f6;color:#512da8}
+    .entry-item-meta{font-size:11px;color:var(--muted);margin-top:2px}
+    .entry-item-arrow{color:var(--muted);font-size:14px}
+
+    /* 수정 모달 오버레이 */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto}
+    .modal-overlay.open{display:flex}
+    .modal-box{background:var(--white);border-radius:var(--radius);width:100%;max-width:600px;padding:1.5rem;position:relative;margin:auto}
+    .modal-title{font-family:var(--font-display);font-size:20px;color:var(--ocean);margin-bottom:1.25rem}
+    .modal-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted)}
+
     @media(max-width:480px){.field-grid,.entry-grid{grid-template-columns:1fr}}
   </style>
 </head>
@@ -208,12 +242,78 @@
       <button class="btn btn-coral btn-sm" onclick="showAddEntry()">+ 착용 데이터 추가</button>
     </div>
 
+    <!-- 브랜드별 데이터 리스트 -->
+    <div class="card" style="margin-top:1.25rem">
+      <h2>입력된 데이터 목록</h2>
+      <div id="entry-brand-list"></div>
+    </div>
+
     <!-- 데이터 백업/복원 -->
     <div class="data-mgmt-row">
       <p>💾 데이터 백업 · 복원 — 기기를 바꾸거나 브라우저를 초기화하기 전에 꼭 백업하세요</p>
       <button class="btn btn-outline btn-sm" onclick="exportData()">📤 데이터 내보내기</button>
       <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">📥 데이터 불러오기</button>
       <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+  </div><!-- /admin-panel -->
+</div><!-- /page-admin -->
+
+<!-- ══ 수정 모달 ══ -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeEditModal()">×</button>
+    <div class="modal-title">착용 데이터 수정</div>
+
+    <div class="field-grid" style="margin-bottom:12px">
+      <div class="field">
+        <label>브랜드</label>
+        <input type="text" id="edit-brand-name" disabled style="opacity:.6">
+      </div>
+      <div class="field">
+        <label>모델</label>
+        <input type="text" id="edit-model-name" disabled style="opacity:.6">
+      </div>
+      <div class="field full">
+        <label>브랜드/모델 특징 메모</label>
+        <textarea id="edit-note" placeholder="예: 전체적으로 작게 나옴..."></textarea>
+      </div>
+    </div>
+
+    <hr class="divider">
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">착용 데이터 수정</p>
+
+    <div class="entry-grid" style="margin-bottom:12px">
+      <div class="field"><label>입은 사이즈 *</label><input type="text" id="edit-size" placeholder="예: M, 55, 85B"></div>
+      <div class="field"><label>핏 평가 *</label>
+        <select id="edit-fit">
+          <option value="fit">딱 맞음 ✅</option>
+          <option value="small">작았음 (한 사이즈 업 필요)</option>
+          <option value="vsmall">많이 작았음 (두 사이즈 업 필요)</option>
+          <option value="big">컸음 (한 사이즈 다운 필요)</option>
+          <option value="vbig">많이 컸음 (두 사이즈 다운 필요)</option>
+        </select>
+      </div>
+      <div class="field"><label>키 (cm)</label><input type="number" id="edit-height" placeholder="165"></div>
+      <div class="field"><label>몸무게 (kg)</label><input type="number" id="edit-weight" placeholder="55"></div>
+      <div class="field"><label>토르소 (cm)</label><input type="number" id="edit-torso" placeholder="68"></div>
+      <div class="field"><label>가슴둘레 (cm)</label><input type="number" id="edit-bust" placeholder="85"></div>
+      <div class="field"><label>허리둘레 (cm)</label><input type="number" id="edit-waist" placeholder="65"></div>
+      <div class="field"><label>엉덩이둘레 (cm)</label><input type="number" id="edit-hip" placeholder="90"></div>
+      <div class="field" style="grid-column:1/-1"><label>메모</label><input type="text" id="edit-memo" placeholder="예: 어깨끈 짧은 편, 상의 컵이 작음"></div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <div class="section-label" style="margin-bottom:8px">신체 특징 태그</div>
+      <div id="edit-tag-grid" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+    </div>
+
+    <hr class="divider">
+    <div style="display:flex;gap:8px;justify-content:space-between">
+      <button class="btn btn-danger btn-sm" onclick="deleteEntry()">삭제</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline" onclick="closeEditModal()">취소</button>
+        <button class="btn btn-primary" style="width:auto" onclick="saveEditEntry()">저장</button>
+      </div>
     </div>
   </div>
 </div>
@@ -500,9 +600,14 @@
 
   // ── 브랜드 ──
   function renderBrandList() {
+    // 상단 브랜드 관리 카드 (삭제 버튼만)
     const el = document.getElementById('brand-list');
     const bids = Object.keys(db.brands);
-    if (!bids.length) { el.innerHTML = '<p style="color:var(--muted);font-size:14px;margin-bottom:1rem">아직 브랜드가 없습니다</p>'; return; }
+    if (!bids.length) {
+      el.innerHTML = '<p style="color:var(--muted);font-size:14px;margin-bottom:1rem">아직 브랜드가 없습니다</p>';
+      document.getElementById('entry-brand-list').innerHTML = '';
+      return;
+    }
     el.innerHTML = bids.map(bid => {
       const b = db.brands[bid];
       const mids = Object.keys(db.models).filter(id => db.models[id].brandId === bid);
@@ -517,6 +622,69 @@
         </div>
       </div>`;
     }).join('');
+
+    // 데이터 목록 아코디언
+    renderEntryBrandList();
+  }
+
+  const FIT_LABEL = { fit:'딱 맞음', small:'작았음', vsmall:'많이 작았음', big:'컸음', vbig:'많이 컸음' };
+  const FIT_CLASS = { fit:'fit-fit', small:'fit-small', vsmall:'fit-vsmall', big:'fit-big', vbig:'fit-vbig' };
+
+  function renderEntryBrandList() {
+    const el = document.getElementById('entry-brand-list');
+    const bids = Object.keys(db.brands);
+    if (!bids.length) { el.innerHTML = ''; return; }
+
+    el.innerHTML = bids.map(bid => {
+      const b = db.brands[bid];
+      const entries = db.entries.map((e,i) => ({...e, _idx:i})).filter(e => e.brandId === bid);
+      if (!entries.length) return `<div class="brand-block">
+        <div class="brand-block-header" onclick="toggleBrandBlock(this)">
+          <div class="brand-block-title">${b.name} <span class="brand-block-meta">데이터 없음</span></div>
+          <div class="brand-block-actions"><span class="chevron">▼</span></div>
+        </div>
+        <div class="entry-list"><p style="padding:14px 16px;font-size:13px;color:var(--muted)">입력된 데이터가 없습니다</p></div>
+      </div>`;
+
+      const rows = entries.map(e => {
+        const modelName = e.modelId && db.models[e.modelId] ? db.models[e.modelId].name : '브랜드 전체';
+        const fitLabel = FIT_LABEL[e.fit] || '딱 맞음';
+        const fitClass = FIT_CLASS[e.fit] || 'fit-fit';
+        const specs = [
+          e.height ? `키 ${e.height}` : '',
+          e.weight ? `${e.weight}kg` : '',
+          e.torso  ? `토르소 ${e.torso}` : '',
+          e.bust   ? `가슴 ${e.bust}` : '',
+        ].filter(Boolean).join(' · ');
+        return `<div class="entry-item" onclick="openEditModal(${e._idx})">
+          <div class="entry-item-left">
+            <div class="entry-size-badge">
+              <span class="size-pill">${e.size}</span>
+              <span class="fit-badge ${fitClass}">${fitLabel}</span>
+              <span style="font-size:12px;color:var(--muted)">${modelName}</span>
+            </div>
+            <div class="entry-item-meta">${specs}${e.memo ? ' · '+e.memo : ''}</div>
+          </div>
+          <span class="entry-item-arrow">›</span>
+        </div>`;
+      }).join('');
+
+      return `<div class="brand-block">
+        <div class="brand-block-header" onclick="toggleBrandBlock(this)">
+          <div class="brand-block-title">${b.name} <span class="brand-block-meta">${entries.length}건</span></div>
+          <div class="brand-block-actions"><span class="chevron">▼</span></div>
+        </div>
+        <div class="entry-list">${rows}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function toggleBrandBlock(header) {
+    const list = header.nextElementSibling;
+    const chevron = header.querySelector('.chevron');
+    const isOpen = list.classList.contains('open');
+    list.classList.toggle('open', !isOpen);
+    chevron.classList.toggle('open', !isOpen);
   }
 
   function showAddBrand() { document.getElementById('add-brand-form').style.display = 'block'; }
@@ -647,6 +815,76 @@
 
     if (!added) { toast('사이즈가 입력된 데이터가 없어요'); return; }
     saveDB(); hideAddEntry(); renderBrandList();
+  }
+
+  // ── 수정 모달 ──
+  let _editIdx = null;
+
+  function openEditModal(idx) {
+    _editIdx = idx;
+    const e = db.entries[idx];
+    const brand = db.brands[e.brandId];
+    const model = e.modelId && db.models[e.modelId] ? db.models[e.modelId] : null;
+
+    document.getElementById('edit-brand-name').value = brand ? brand.name : '';
+    document.getElementById('edit-model-name').value = model ? model.name : '브랜드 전체';
+    document.getElementById('edit-note').value = e.note || (model ? model.note : '') || '';
+    document.getElementById('edit-size').value   = e.size  || '';
+    document.getElementById('edit-fit').value    = e.fit   || 'fit';
+    document.getElementById('edit-height').value = e.height || '';
+    document.getElementById('edit-weight').value = e.weight || '';
+    document.getElementById('edit-torso').value  = e.torso  || '';
+    document.getElementById('edit-bust').value   = e.bust   || '';
+    document.getElementById('edit-waist').value  = e.waist  || '';
+    document.getElementById('edit-hip').value    = e.hip    || '';
+    document.getElementById('edit-memo').value   = e.memo   || '';
+
+    // 태그 체크박스
+    const saved = e.tags || [];
+    document.getElementById('edit-tag-grid').innerHTML = db.tags.map(t =>
+      `<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--text);cursor:pointer">
+        <input type="checkbox" class="edit-tag-cb" value="${t}" ${saved.includes(t)?'checked':''} style="width:auto;background:none;border:none;padding:0">${t}
+      </label>`
+    ).join('');
+
+    document.getElementById('edit-modal').classList.add('open');
+  }
+
+  function closeEditModal() {
+    document.getElementById('edit-modal').classList.remove('open');
+    _editIdx = null;
+  }
+
+  function saveEditEntry() {
+    if (_editIdx === null) return;
+    const e = db.entries[_editIdx];
+
+    const size = document.getElementById('edit-size').value.trim();
+    if (!size) { toast('사이즈를 입력해 주세요'); return; }
+
+    e.size   = size;
+    e.fit    = document.getElementById('edit-fit').value;
+    e.note   = document.getElementById('edit-note').value.trim();
+    e.memo   = document.getElementById('edit-memo').value.trim();
+    const h  = document.getElementById('edit-height').value; e.height = h ? parseFloat(h) : undefined;
+    const w  = document.getElementById('edit-weight').value; e.weight = w ? parseFloat(w) : undefined;
+    const t  = document.getElementById('edit-torso').value;  e.torso  = t ? parseFloat(t) : undefined;
+    const b  = document.getElementById('edit-bust').value;   e.bust   = b ? parseFloat(b) : undefined;
+    const wa = document.getElementById('edit-waist').value;  e.waist  = wa? parseFloat(wa): undefined;
+    const hip= document.getElementById('edit-hip').value;    e.hip    = hip?parseFloat(hip):undefined;
+    e.tags   = [...document.querySelectorAll('.edit-tag-cb:checked')].map(c => c.value);
+
+    // 모델 메모도 같이 업데이트
+    if (e.modelId && db.models[e.modelId] && e.note) db.models[e.modelId].note = e.note;
+
+    saveDB(); closeEditModal(); renderBrandList();
+  }
+
+  function deleteEntry() {
+    if (_editIdx === null) return;
+    if (!confirm('이 데이터를 삭제할까요?')) return;
+    db.entries.splice(_editIdx, 1);
+    saveDB(); closeEditModal(); renderBrandList();
   }
 
   // ── 초기화 ──
