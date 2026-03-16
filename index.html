@@ -386,10 +386,24 @@
       const modelName = key === '__brand__' ? null : (db.models[key] ? db.models[key].name : null);
       const note = (key !== '__brand__' && db.models[key] && db.models[key].note) ? db.models[key].note : result.note;
       const label = modelName ? `${brand.name} · ${modelName}` : brand.name;
+
+      // 보정 배지
+      let basisBadge = '';
+      if (result.shifted) {
+        const dir = result.delta > 0 ? '⬆️ 업' : '⬇️ 다운';
+        const steps = Math.abs(result.delta);
+        basisBadge = `<div class="note-box" style="margin-top:10px;background:rgba(255,255,255,.25)">
+          📊 근거 데이터: <strong>${result.originalSize}</strong> 입었을 때 <em>${fitLabel(result.fit)}</em> → ${steps}사이즈 ${dir} 추천
+        </div>`;
+      } else if (result.fit === 'fit') {
+        basisBadge = `<div style="margin-top:8px;font-size:12px;opacity:.7">✅ 유사 체형이 딱 맞았던 사이즈 기반</div>`;
+      }
+
       html += `<div class="result">
         <div class="size-label">${label}</div>
         <div class="size-value">추천 사이즈: ${result.size}</div>
-        ${note ? `<div class="note-box">ℹ️ ${note}</div>` : ''}
+        ${basisBadge}
+        ${note ? `<div class="note-box" style="margin-top:8px">ℹ️ ${note}</div>` : ''}
         ${result.memo && result.memo !== note ? `<div class="note-box" style="margin-top:6px">💬 ${result.memo}</div>` : ''}
       </div>`;
     });
@@ -397,19 +411,74 @@
     resEl.innerHTML = html || '<div class="no-result">유사한 데이터를 찾지 못했어요. 더 많은 착용 데이터가 필요합니다.</div>';
   }
 
+  // 사이즈 순서표 — 브랜드마다 다르지만 일반적인 순서
+  const SIZE_ORDERS = [
+    ['XS','S','M','L','XL','XXL'],
+    ['44','55','66','77','88'],
+    ['32','34','36','38','40','42','44','46'],
+    ['75A','75B','75C','80A','80B','80C','85A','85B','85C','90A','90B','90C'],
+  ];
+
+  function shiftSize(size, fit) {
+    const delta = { fit:0, small:1, vsmall:2, big:-1, vbig:-2 }[fit] || 0;
+    if (delta === 0) return { size, shifted: false };
+    for (const order of SIZE_ORDERS) {
+      const idx = order.findIndex(s => s.toLowerCase() === size.toLowerCase());
+      if (idx !== -1) {
+        const newIdx = Math.max(0, Math.min(order.length - 1, idx + delta));
+        return { size: order[newIdx], shifted: newIdx !== idx, delta };
+      }
+    }
+    // 숫자형 사이즈 (예: 55 → 66)
+    const num = parseFloat(size);
+    if (!isNaN(num)) {
+      const shifted = num + delta * 5;
+      return { size: String(shifted), shifted: true, delta };
+    }
+    // 못 찾으면 원본 반환하되 힌트만
+    return { size, shifted: false, delta };
+  }
+
+  function fitLabel(fit) {
+    return { fit:'딱 맞음', small:'작았음', vsmall:'많이 작았음', big:'컸음', vbig:'많이 컸음' }[fit] || '';
+  }
+
   function recommendSize(entries, height, weight, torso, bust, tags) {
-    let best = null, bestScore = Infinity;
-    entries.forEach(e => {
-      let score = 0, count = 0;
-      if (e.height) { score += Math.abs(e.height - height) * 1.5; count++; }
-      if (e.weight) { score += Math.abs(e.weight - weight) * 2; count++; }
-      if (torso && e.torso) { score += Math.abs(e.torso - torso) * 1.2; count++; }
-      if (bust && e.bust)   { score += Math.abs(e.bust - bust); count++; }
-      if (count === 0) return;
-      const avg = score / count;
-      if (avg < bestScore) { bestScore = avg; best = e; }
-    });
-    return best;
+    // 1순위: fit='fit' 인 데이터 / 2순위: 나머지
+    const fitEntries  = entries.filter(e => !e.fit || e.fit === 'fit');
+    const restEntries = entries.filter(e => e.fit && e.fit !== 'fit');
+
+    function scoredBest(pool) {
+      let best = null, bestScore = Infinity;
+      pool.forEach(e => {
+        let score = 0, count = 0;
+        if (e.height) { score += Math.abs(e.height - height) * 1.5; count++; }
+        if (e.weight) { score += Math.abs(e.weight - weight) * 2; count++; }
+        if (torso && e.torso) { score += Math.abs(e.torso - torso) * 1.2; count++; }
+        if (bust && e.bust)   { score += Math.abs(e.bust - bust); count++; }
+        if (count === 0) return;
+        const avg = score / count;
+        if (avg < bestScore) { bestScore = avg; best = e; }
+      });
+      return best ? { entry: best, score: bestScore } : null;
+    }
+
+    const fromFit  = scoredBest(fitEntries);
+    const fromRest = scoredBest(restEntries);
+
+    // 둘 다 없으면 null
+    if (!fromFit && !fromRest) return null;
+
+    // fit 데이터 있으면 우선 사용, 없으면 rest 데이터로 보정
+    let chosen, entry;
+    if (fromFit && (!fromRest || fromFit.score <= fromRest.score * 1.5)) {
+      entry = fromFit.entry;
+      return { size: entry.size, fit: 'fit', shifted: false, delta: 0, memo: entry.memo, note: entry.note };
+    } else {
+      entry = fromRest.entry;
+      const { size, shifted, delta } = shiftSize(entry.size, entry.fit);
+      return { size, fit: entry.fit, originalSize: entry.size, shifted, delta, memo: entry.memo, note: entry.note };
+    }
   }
 
   // ── 어드민 인증 ──
@@ -525,14 +594,23 @@
     row.innerHTML = `
       <button onclick="this.parentElement.remove()" style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px">×</button>
       <div class="entry-grid">
-        <div class="field"><label>추천 사이즈 *</label><input type="text" class="e-size" placeholder="예: M, 55, 85B"></div>
+        <div class="field"><label>입은 사이즈 *</label><input type="text" class="e-size" placeholder="예: M, 55, 85B"></div>
+        <div class="field"><label>핏 평가 *</label>
+          <select class="e-fit">
+            <option value="fit">딱 맞음 ✅</option>
+            <option value="small">작았음 (한 사이즈 업 필요)</option>
+            <option value="vsmall">많이 작았음 (두 사이즈 업 필요)</option>
+            <option value="big">컸음 (한 사이즈 다운 필요)</option>
+            <option value="vbig">많이 컸음 (두 사이즈 다운 필요)</option>
+          </select>
+        </div>
         <div class="field"><label>키 (cm)</label><input type="number" class="e-height" placeholder="165"></div>
         <div class="field"><label>몸무게 (kg)</label><input type="number" class="e-weight" placeholder="55"></div>
         <div class="field"><label>토르소 (cm)</label><input type="number" class="e-torso" placeholder="68"></div>
         <div class="field"><label>가슴둘레 (cm)</label><input type="number" class="e-bust" placeholder="85"></div>
         <div class="field"><label>허리둘레 (cm)</label><input type="number" class="e-waist" placeholder="65"></div>
         <div class="field"><label>엉덩이둘레 (cm)</label><input type="number" class="e-hip" placeholder="90"></div>
-        <div class="field" style="grid-column:1/-1"><label>메모</label><input type="text" class="e-memo" placeholder="예: 잘 맞음, 어깨끈 짧은 편"></div>
+        <div class="field" style="grid-column:1/-1"><label>메모</label><input type="text" class="e-memo" placeholder="예: 어깨끈 짧은 편, 상의 컵이 작음"></div>
       </div>
       <div style="margin-top:8px">
         <div class="section-label" style="margin-bottom:6px">신체 특징 태그</div>
@@ -552,7 +630,8 @@
     document.querySelectorAll('#entries-container > div').forEach(row => {
       const size = row.querySelector('.e-size')?.value.trim();
       if (!size) return;
-      const entry = { brandId: bid, size, note };
+      const fit = row.querySelector('.e-fit')?.value || 'fit';
+      const entry = { brandId: bid, size, fit, note };
       if (mid && mid !== '__new__') entry.modelId = mid;
       const h = row.querySelector('.e-height')?.value; if (h) entry.height = parseFloat(h);
       const w = row.querySelector('.e-weight')?.value; if (w) entry.weight = parseFloat(w);
