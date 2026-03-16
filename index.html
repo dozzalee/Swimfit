@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SizeFit 🏊 수영복 사이즈 추천</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --ocean:#1a5f7a;--ocean-mid:#2a7a9a;--ocean-light:#e8f4f8;
+      --sand:#f5efe6;--coral:#e07b6a;--coral-light:#fdf0ee;
+      --text:#1c2b35;--muted:#6b8291;--border:rgba(26,95,122,0.15);
+      --white:#fff;--radius:12px;
+      --font-display:'DM Serif Display',Georgia,serif;
+      --font-body:'DM Sans',sans-serif;
+    }
+    body{font-family:var(--font-body);background:var(--sand);color:var(--text);min-height:100vh}
+    .nav{display:flex;background:var(--white);border-bottom:1px solid var(--border);padding:0 1.5rem;position:sticky;top:0;z-index:100}
+    .nav-brand{font-family:var(--font-display);font-size:18px;color:var(--ocean);padding:10px 0;margin-right:auto;display:flex;align-items:center;gap:6px}
+    .nav-tab{font-family:var(--font-body);font-size:13px;font-weight:500;padding:14px 16px;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .2s}
+    .nav-tab.active{color:var(--ocean);border-bottom-color:var(--ocean)}
+    .page{display:none;padding:2rem 1.5rem;max-width:720px;margin:0 auto}
+    .page.active{display:block}
+    .hero{margin-bottom:2rem}
+    .hero h1{font-family:var(--font-display);font-size:30px;color:var(--ocean);line-height:1.2}
+    .hero p{color:var(--muted);font-size:14px;margin-top:6px}
+    .card{background:var(--white);border-radius:var(--radius);border:1px solid var(--border);padding:1.5rem;margin-bottom:1.25rem}
+    .card h2{font-family:var(--font-display);font-size:17px;color:var(--ocean);margin-bottom:1rem}
+    .field{display:flex;flex-direction:column;gap:5px}
+    .field.full{grid-column:1/-1}
+    .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    label{font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+    input,select,textarea{font-family:var(--font-body);font-size:14px;color:var(--text);background:var(--ocean-light);border:1px solid transparent;border-radius:8px;padding:9px 12px;outline:none;transition:border .15s;width:100%}
+    input:focus,select:focus,textarea:focus{border-color:var(--ocean);background:var(--white)}
+    textarea{resize:vertical;min-height:70px}
+    select{cursor:pointer}
+    .tag-grid{display:flex;flex-wrap:wrap;gap:8px}
+    .tag{font-size:12px;font-weight:500;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--white);cursor:pointer;color:var(--muted);transition:all .15s;user-select:none;display:inline-flex;align-items:center;gap:5px}
+    .tag.selected{background:var(--ocean);color:#fff;border-color:var(--ocean)}
+    .tag .del{opacity:.6;font-size:14px;line-height:1;cursor:pointer}
+    .tag .del:hover{opacity:1}
+    .btn{font-family:var(--font-body);font-size:14px;font-weight:500;padding:12px 24px;border-radius:8px;border:none;cursor:pointer;transition:all .15s}
+    .btn-primary{background:var(--ocean);color:#fff;width:100%}
+    .btn-primary:hover{background:#154e65}
+    .btn-coral{background:var(--coral);color:#fff}
+    .btn-coral:hover{background:#c9695a}
+    .btn-outline{background:var(--white);color:var(--ocean);border:1px solid var(--ocean)}
+    .btn-outline:hover{background:var(--ocean-light)}
+    .btn-sm{padding:7px 14px;font-size:12px}
+    .btn-danger{background:#fee;color:#c00;border:1px solid #fcc}
+    .btn-danger:hover{background:#fcc}
+    .result{background:var(--ocean);color:#fff;border-radius:var(--radius);padding:1.5rem;margin-bottom:1.25rem}
+    .result .size-label{font-size:13px;opacity:.75;margin-bottom:4px}
+    .result .size-value{font-family:var(--font-display);font-size:38px}
+    .result .note-box{margin-top:10px;font-size:13px;background:rgba(255,255,255,.15);border-radius:8px;padding:10px 14px;line-height:1.5}
+    .no-result{background:var(--coral-light);border:1px solid rgba(224,123,106,.25);border-radius:var(--radius);padding:1.25rem;color:var(--coral);font-size:14px}
+    .admin-gate{text-align:center;padding:3rem 1rem}
+    .admin-gate h2{font-family:var(--font-display);font-size:24px;color:var(--ocean);margin-bottom:1rem}
+    .pw-row{display:flex;gap:8px;max-width:320px;margin:0 auto}
+    .admin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
+    .admin-header h2{font-family:var(--font-display);font-size:22px;color:var(--ocean)}
+    .brand-row{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .brand-name{font-weight:500;color:var(--text)}
+    .brand-meta{font-size:12px;color:var(--muted);margin-top:2px}
+    .brand-actions{display:flex;gap:6px}
+    .divider{border:none;border-top:1px solid var(--border);margin:1.5rem 0}
+    .entry-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+    .toast.show{opacity:1}
+    .tag-add-row{display:flex;gap:8px;margin-top:10px}
+    .tag-add-row input{flex:1}
+    .section-label{font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px;margin-top:14px}
+    .data-mgmt-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:1rem;padding:1rem;background:var(--ocean-light);border-radius:var(--radius)}
+    .data-mgmt-row p{font-size:12px;color:var(--muted);width:100%;margin-bottom:8px}
+    @media(max-width:480px){.field-grid,.entry-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<nav class="nav">
+  <span class="nav-brand">🏊 SizeFit</span>
+  <button class="nav-tab active" onclick="showPage('search',this)">사이즈 찾기</button>
+  <button class="nav-tab" onclick="showPage('admin',this)">어드민</button>
+</nav>
+
+<!-- ══ SEARCH ══ -->
+<div class="page active" id="page-search">
+  <div class="hero">
+    <h1>내 수영복<br>사이즈 찾기</h1>
+    <p>신체 스펙을 입력하면 브랜드·모델별 추천 사이즈를 알려드려요</p>
+  </div>
+  <div class="card">
+    <h2>신체 정보</h2>
+    <div class="field-grid">
+      <div class="field"><label>키 (cm)</label><input type="number" id="s-height" placeholder="예: 165"></div>
+      <div class="field"><label>몸무게 (kg)</label><input type="number" id="s-weight" placeholder="예: 55"></div>
+      <div class="field"><label>토르소 (cm) <span style="font-weight:300;font-size:11px;">선택</span></label><input type="number" id="s-torso" placeholder="예: 68"></div>
+      <div class="field"><label>가슴둘레 (cm) <span style="font-weight:300;font-size:11px;">선택</span></label><input type="number" id="s-bust" placeholder="예: 85"></div>
+    </div>
+    <div style="margin-top:12px">
+      <div class="section-label">신체 특징 <span style="font-weight:300;font-size:11px;text-transform:none;">선택</span></div>
+      <div class="tag-grid" id="s-tags"></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>브랜드 / 모델</h2>
+    <div class="field-grid">
+      <div class="field"><label>브랜드 *</label>
+        <select id="s-brand" onchange="onBrandChange()">
+          <option value="">브랜드 선택</option>
+        </select>
+      </div>
+      <div class="field"><label>모델 <span style="font-weight:300;font-size:11px;">선택</span></label>
+        <select id="s-model">
+          <option value="">모델 선택 안 함 (브랜드 전체)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="doSearch()">사이즈 추천받기</button>
+  <div id="search-result" style="margin-top:1.5rem"></div>
+</div>
+
+<!-- ══ ADMIN ══ -->
+<div class="page" id="page-admin">
+  <div class="admin-gate" id="admin-gate">
+    <h2>어드민 로그인</h2>
+    <p style="color:var(--muted);font-size:14px;margin-bottom:1.5rem">관리자 전용 페이지입니다</p>
+    <div class="pw-row">
+      <input type="password" id="admin-pw" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')adminLogin()">
+      <button class="btn btn-primary" style="width:auto;white-space:nowrap" onclick="adminLogin()">로그인</button>
+    </div>
+    <p style="color:var(--coral);font-size:12px;margin-top:8px" id="pw-err"></p>
+  </div>
+
+  <div id="admin-panel" style="display:none">
+    <div class="admin-header">
+      <h2>데이터 관리</h2>
+      <button class="btn btn-outline btn-sm" onclick="adminLogout()">로그아웃</button>
+    </div>
+
+    <!-- 태그 관리 -->
+    <div class="card">
+      <h2>신체 특징 태그 관리</h2>
+      <div class="tag-grid" id="admin-tag-list"></div>
+      <div class="tag-add-row">
+        <input type="text" id="new-tag-input" placeholder="새 태그 입력 (예: 상반신이 짧은 편)" onkeydown="if(event.key==='Enter')addCustomTag()">
+        <button class="btn btn-outline btn-sm" onclick="addCustomTag()">+ 추가</button>
+      </div>
+    </div>
+
+    <!-- 브랜드 목록 -->
+    <div class="card">
+      <h2>브랜드 / 모델 목록</h2>
+      <div id="brand-list"></div>
+      <button class="btn btn-outline btn-sm" onclick="showAddBrand()">+ 브랜드 추가</button>
+    </div>
+
+    <!-- 브랜드 추가 폼 -->
+    <div class="card" id="add-brand-form" style="display:none">
+      <h2>브랜드 추가</h2>
+      <div class="field" style="margin-bottom:12px">
+        <label>브랜드명 *</label>
+        <input type="text" id="f-brand-name" placeholder="예: 스피도">
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" style="width:auto" onclick="saveBrand()">저장</button>
+        <button class="btn btn-outline" onclick="hideAddBrand()">취소</button>
+      </div>
+    </div>
+
+    <!-- 착용 데이터 추가 폼 -->
+    <div class="card" id="add-entry-form" style="display:none">
+      <h2>착용 데이터 추가</h2>
+      <div class="field-grid" style="margin-bottom:12px">
+        <div class="field">
+          <label>브랜드 *</label>
+          <select id="f-entry-brand" onchange="onEntryBrandChange()">
+            <option value="">브랜드 선택</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>모델 <span style="font-weight:300;font-size:11px;text-transform:none;">선택 안 해도 됨</span></label>
+          <select id="f-entry-model">
+            <option value="">모델 없음 (브랜드 기준)</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label>브랜드/모델 특징 메모 <span style="font-weight:300;font-size:11px;text-transform:none;">선택</span></label>
+          <textarea id="f-entry-note" placeholder="예: 전체적으로 작게 나옴, 상의 컵이 작은 편..."></textarea>
+        </div>
+      </div>
+      <hr class="divider">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">착용 데이터 — 필요한 항목만 입력하세요</p>
+      <div id="entries-container"></div>
+      <button class="btn btn-outline btn-sm" onclick="addEntryRow()" style="margin-bottom:12px">+ 데이터 행 추가</button>
+      <hr class="divider">
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" style="width:auto" onclick="saveEntries()">저장</button>
+        <button class="btn btn-outline" onclick="hideAddEntry()">취소</button>
+      </div>
+    </div>
+
+    <div style="margin-top:1rem;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-coral btn-sm" onclick="showAddEntry()">+ 착용 데이터 추가</button>
+    </div>
+
+    <!-- 데이터 백업/복원 -->
+    <div class="data-mgmt-row">
+      <p>💾 데이터 백업 · 복원 — 기기를 바꾸거나 브라우저를 초기화하기 전에 꼭 백업하세요</p>
+      <button class="btn btn-outline btn-sm" onclick="exportData()">📤 데이터 내보내기</button>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-file').click()">📥 데이터 불러오기</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── 비밀번호 변경하려면 아래 값을 수정하세요 ──
+  const ADMIN_PW = 'swim2024';
+  const SK = 'swimfit-v2';
+  const DEFAULT_TAGS = ['허리가 긴 편','다리가 긴 편','상체가 큰 편','하체가 큰 편','어깨가 넓은 편','슬림한 편','탄탄한 편'];
+
+  let db = { brands:{}, models:{}, entries:[], tags:[...DEFAULT_TAGS] };
+
+  function loadDB() {
+    try {
+      const saved = localStorage.getItem(SK);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        db = { brands:{}, models:{}, entries:[], tags:[...DEFAULT_TAGS], ...parsed };
+        if (!db.tags || db.tags.length === 0) db.tags = [...DEFAULT_TAGS];
+      }
+    } catch(e) { db = { brands:{}, models:{}, entries:[], tags:[...DEFAULT_TAGS] }; }
+  }
+
+  function saveDB() {
+    try {
+      localStorage.setItem(SK, JSON.stringify(db));
+      toast('저장되었습니다');
+    } catch(e) { toast('저장 실패'); }
+  }
+
+  function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg; el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2200);
+  }
+
+  // ── 백업/복원 ──
+  function exportData() {
+    const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'swimfit-backup-' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    toast('백업 파일 다운로드 완료');
+  }
+
+  function importData(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (!parsed.brands) { toast('올바른 백업 파일이 아닙니다'); return; }
+        db = parsed;
+        saveDB(); renderAdminTags(); renderBrandList();
+        toast('데이터 불러오기 완료!');
+      } catch(e) { toast('파일 읽기 오류'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
+  // ── NAV ──
+  function showPage(p, btn) {
+    document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('page-' + p).classList.add('active');
+    btn.classList.add('active');
+    if (p === 'search') { renderSearchTags(); populateSearchDropdowns(); }
+    if (p === 'admin') { renderAdminTags(); renderBrandList(); }
+  }
+
+  // ── 태그 ──
+  function renderSearchTags() {
+    const el = document.getElementById('s-tags');
+    el.innerHTML = db.tags.map(t => `<span class="tag" onclick="toggleTag(this)">${t}</span>`).join('');
+  }
+
+  function renderAdminTags() {
+    const el = document.getElementById('admin-tag-list');
+    el.innerHTML = db.tags.map((t,i) =>
+      `<span class="tag selected">${t}<span class="del" onclick="removeTag(${i})">×</span></span>`
+    ).join('');
+  }
+
+  function toggleTag(el) { el.classList.toggle('selected'); }
+
+  function getSelectedTags() {
+    return [...document.querySelectorAll('#s-tags .tag.selected')].map(t => t.textContent);
+  }
+
+  function addCustomTag() {
+    const inp = document.getElementById('new-tag-input');
+    const val = inp.value.trim();
+    if (!val) return;
+    if (db.tags.includes(val)) { toast('이미 있는 태그예요'); return; }
+    db.tags.push(val);
+    saveDB(); renderAdminTags(); inp.value = '';
+  }
+
+  function removeTag(i) {
+    db.tags.splice(i, 1);
+    saveDB(); renderAdminTags();
+  }
+
+  // ── 검색 드롭다운 ──
+  function populateSearchDropdowns() {
+    const bSel = document.getElementById('s-brand');
+    const cur = bSel.value;
+    bSel.innerHTML = '<option value="">브랜드 선택</option>';
+    Object.keys(db.brands).forEach(id => {
+      const o = document.createElement('option');
+      o.value = id; o.textContent = db.brands[id].name;
+      bSel.appendChild(o);
+    });
+    bSel.value = cur;
+    onBrandChange();
+  }
+
+  function onBrandChange() {
+    const bid = document.getElementById('s-brand').value;
+    const mSel = document.getElementById('s-model');
+    mSel.innerHTML = '<option value="">모델 선택 안 함 (브랜드 전체)</option>';
+    if (!bid) return;
+    Object.keys(db.models).filter(id => db.models[id].brandId === bid).forEach(id => {
+      const o = document.createElement('option');
+      o.value = id; o.textContent = db.models[id].name;
+      mSel.appendChild(o);
+    });
+  }
+
+  // ── 검색 로직 ──
+  function doSearch() {
+    const height = parseFloat(document.getElementById('s-height').value);
+    const weight = parseFloat(document.getElementById('s-weight').value);
+    const torso  = parseFloat(document.getElementById('s-torso').value) || null;
+    const bust   = parseFloat(document.getElementById('s-bust').value) || null;
+    const tags   = getSelectedTags();
+    const bid    = document.getElementById('s-brand').value;
+    const mid    = document.getElementById('s-model').value;
+    const resEl  = document.getElementById('search-result');
+
+    if (!bid) { resEl.innerHTML = '<div class="no-result">브랜드를 선택해 주세요.</div>'; return; }
+    if (!height || !weight) { resEl.innerHTML = '<div class="no-result">키와 몸무게를 입력해 주세요.</div>'; return; }
+
+    const brand = db.brands[bid];
+    let candidates = db.entries.filter(e => {
+      if (e.brandId !== bid) return false;
+      if (mid) return e.modelId === mid || !e.modelId;
+      return true;
+    });
+
+    if (candidates.length === 0) {
+      resEl.innerHTML = '<div class="no-result">해당 브랜드/모델에 아직 착용 데이터가 없습니다.</div>';
+      return;
+    }
+
+    const groups = {};
+    candidates.forEach(e => {
+      const key = e.modelId || '__brand__';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(e);
+    });
+
+    let html = '';
+    Object.keys(groups).forEach(key => {
+      const result = recommendSize(groups[key], height, weight, torso, bust, tags);
+      if (!result) return;
+      const modelName = key === '__brand__' ? null : (db.models[key] ? db.models[key].name : null);
+      const note = (key !== '__brand__' && db.models[key] && db.models[key].note) ? db.models[key].note : result.note;
+      const label = modelName ? `${brand.name} · ${modelName}` : brand.name;
+      html += `<div class="result">
+        <div class="size-label">${label}</div>
+        <div class="size-value">추천 사이즈: ${result.size}</div>
+        ${note ? `<div class="note-box">ℹ️ ${note}</div>` : ''}
+        ${result.memo && result.memo !== note ? `<div class="note-box" style="margin-top:6px">💬 ${result.memo}</div>` : ''}
+      </div>`;
+    });
+
+    resEl.innerHTML = html || '<div class="no-result">유사한 데이터를 찾지 못했어요. 더 많은 착용 데이터가 필요합니다.</div>';
+  }
+
+  function recommendSize(entries, height, weight, torso, bust, tags) {
+    let best = null, bestScore = Infinity;
+    entries.forEach(e => {
+      let score = 0, count = 0;
+      if (e.height) { score += Math.abs(e.height - height) * 1.5; count++; }
+      if (e.weight) { score += Math.abs(e.weight - weight) * 2; count++; }
+      if (torso && e.torso) { score += Math.abs(e.torso - torso) * 1.2; count++; }
+      if (bust && e.bust)   { score += Math.abs(e.bust - bust); count++; }
+      if (count === 0) return;
+      const avg = score / count;
+      if (avg < bestScore) { bestScore = avg; best = e; }
+    });
+    return best;
+  }
+
+  // ── 어드민 인증 ──
+  function adminLogin() {
+    if (document.getElementById('admin-pw').value === ADMIN_PW) {
+      document.getElementById('admin-gate').style.display = 'none';
+      document.getElementById('admin-panel').style.display = 'block';
+      renderAdminTags(); renderBrandList();
+    } else {
+      document.getElementById('pw-err').textContent = '비밀번호가 틀렸습니다';
+    }
+  }
+
+  function adminLogout() {
+    document.getElementById('admin-gate').style.display = 'block';
+    document.getElementById('admin-panel').style.display = 'none';
+    document.getElementById('admin-pw').value = '';
+  }
+
+  // ── 브랜드 ──
+  function renderBrandList() {
+    const el = document.getElementById('brand-list');
+    const bids = Object.keys(db.brands);
+    if (!bids.length) { el.innerHTML = '<p style="color:var(--muted);font-size:14px;margin-bottom:1rem">아직 브랜드가 없습니다</p>'; return; }
+    el.innerHTML = bids.map(bid => {
+      const b = db.brands[bid];
+      const mids = Object.keys(db.models).filter(id => db.models[id].brandId === bid);
+      const entryCount = db.entries.filter(e => e.brandId === bid).length;
+      return `<div class="brand-row">
+        <div>
+          <div class="brand-name">${b.name}</div>
+          <div class="brand-meta">모델 ${mids.length}개 · 착용데이터 ${entryCount}건</div>
+        </div>
+        <div class="brand-actions">
+          <button class="btn btn-danger btn-sm" onclick="deleteBrand('${bid}')">삭제</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function showAddBrand() { document.getElementById('add-brand-form').style.display = 'block'; }
+  function hideAddBrand() { document.getElementById('add-brand-form').style.display = 'none'; document.getElementById('f-brand-name').value = ''; }
+
+  function saveBrand() {
+    const name = document.getElementById('f-brand-name').value.trim();
+    if (!name) { toast('브랜드명을 입력해 주세요'); return; }
+    db.brands['b_' + Date.now()] = { name };
+    saveDB(); hideAddBrand(); renderBrandList();
+  }
+
+  function deleteBrand(bid) {
+    if (!confirm('브랜드와 관련 모델, 데이터를 모두 삭제할까요?')) return;
+    delete db.brands[bid];
+    Object.keys(db.models).filter(id => db.models[id].brandId === bid).forEach(id => delete db.models[id]);
+    db.entries = db.entries.filter(e => e.brandId !== bid);
+    saveDB(); renderBrandList();
+  }
+
+  // ── 착용 데이터 폼 ──
+  function showAddEntry() {
+    const sel = document.getElementById('f-entry-brand');
+    sel.innerHTML = '<option value="">브랜드 선택</option>';
+    Object.keys(db.brands).forEach(id => {
+      const o = document.createElement('option');
+      o.value = id; o.textContent = db.brands[id].name;
+      sel.appendChild(o);
+    });
+    document.getElementById('f-entry-model').innerHTML = '<option value="">모델 없음 (브랜드 기준)</option>';
+    document.getElementById('f-entry-note').value = '';
+    document.getElementById('entries-container').innerHTML = '';
+    addEntryRow();
+    document.getElementById('add-entry-form').style.display = 'block';
+  }
+
+  function hideAddEntry() { document.getElementById('add-entry-form').style.display = 'none'; }
+
+  function onEntryBrandChange() {
+    const bid = document.getElementById('f-entry-brand').value;
+    const mSel = document.getElementById('f-entry-model');
+    mSel.innerHTML = '<option value="">모델 없음 (브랜드 기준)</option>';
+    if (!bid) return;
+    Object.keys(db.models).filter(id => db.models[id].brandId === bid).forEach(id => {
+      const o = document.createElement('option');
+      o.value = id; o.textContent = db.models[id].name;
+      mSel.appendChild(o);
+    });
+    const oNew = document.createElement('option');
+    oNew.value = '__new__'; oNew.textContent = '+ 새 모델 추가';
+    mSel.appendChild(oNew);
+    mSel.onchange = () => {
+      if (mSel.value === '__new__') {
+        const nm = prompt('새 모델명 입력:');
+        if (nm && nm.trim()) {
+          const mid = 'm_' + Date.now();
+          db.models[mid] = { brandId: bid, name: nm.trim(), note: '' };
+          const o2 = document.createElement('option');
+          o2.value = mid; o2.textContent = nm.trim();
+          mSel.insertBefore(o2, mSel.lastChild);
+          mSel.value = mid;
+        } else { mSel.value = ''; }
+      }
+    };
+  }
+
+  function addEntryRow() {
+    const row = document.createElement('div');
+    row.style.cssText = 'background:var(--ocean-light);border-radius:10px;padding:12px;margin-bottom:10px;position:relative';
+    const tagHtml = db.tags.map(t =>
+      `<label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--text);cursor:pointer;margin-right:8px;margin-bottom:4px">
+        <input type="checkbox" class="e-tag-cb" value="${t}" style="width:auto;background:none;border:none;padding:0">${t}
+      </label>`
+    ).join('');
+    row.innerHTML = `
+      <button onclick="this.parentElement.remove()" style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px">×</button>
+      <div class="entry-grid">
+        <div class="field"><label>추천 사이즈 *</label><input type="text" class="e-size" placeholder="예: M, 55, 85B"></div>
+        <div class="field"><label>키 (cm)</label><input type="number" class="e-height" placeholder="165"></div>
+        <div class="field"><label>몸무게 (kg)</label><input type="number" class="e-weight" placeholder="55"></div>
+        <div class="field"><label>토르소 (cm)</label><input type="number" class="e-torso" placeholder="68"></div>
+        <div class="field"><label>가슴둘레 (cm)</label><input type="number" class="e-bust" placeholder="85"></div>
+        <div class="field"><label>허리둘레 (cm)</label><input type="number" class="e-waist" placeholder="65"></div>
+        <div class="field"><label>엉덩이둘레 (cm)</label><input type="number" class="e-hip" placeholder="90"></div>
+        <div class="field" style="grid-column:1/-1"><label>메모</label><input type="text" class="e-memo" placeholder="예: 잘 맞음, 어깨끈 짧은 편"></div>
+      </div>
+      <div style="margin-top:8px">
+        <div class="section-label" style="margin-bottom:6px">신체 특징 태그</div>
+        <div style="display:flex;flex-wrap:wrap">${tagHtml}</div>
+      </div>`;
+    document.getElementById('entries-container').appendChild(row);
+  }
+
+  function saveEntries() {
+    const bid = document.getElementById('f-entry-brand').value;
+    const mid = document.getElementById('f-entry-model').value || null;
+    const note = document.getElementById('f-entry-note').value.trim();
+    if (!bid) { toast('브랜드를 선택해 주세요'); return; }
+    if (mid && mid !== '__new__' && db.models[mid] && note) db.models[mid].note = note;
+
+    let added = 0;
+    document.querySelectorAll('#entries-container > div').forEach(row => {
+      const size = row.querySelector('.e-size')?.value.trim();
+      if (!size) return;
+      const entry = { brandId: bid, size, note };
+      if (mid && mid !== '__new__') entry.modelId = mid;
+      const h = row.querySelector('.e-height')?.value; if (h) entry.height = parseFloat(h);
+      const w = row.querySelector('.e-weight')?.value; if (w) entry.weight = parseFloat(w);
+      const t = row.querySelector('.e-torso')?.value;  if (t) entry.torso  = parseFloat(t);
+      const b = row.querySelector('.e-bust')?.value;   if (b) entry.bust   = parseFloat(b);
+      const wa= row.querySelector('.e-waist')?.value;  if (wa) entry.waist = parseFloat(wa);
+      const hip=row.querySelector('.e-hip')?.value;    if (hip) entry.hip  = parseFloat(hip);
+      const m = row.querySelector('.e-memo')?.value.trim(); if (m) entry.memo = m;
+      entry.tags = [...row.querySelectorAll('.e-tag-cb:checked')].map(c => c.value);
+      db.entries.push(entry);
+      added++;
+    });
+
+    if (!added) { toast('사이즈가 입력된 데이터가 없어요'); return; }
+    saveDB(); hideAddEntry(); renderBrandList();
+  }
+
+  // ── 초기화 ──
+  loadDB();
+  renderSearchTags();
+  populateSearchDropdowns();
+</script>
+</body>
+</html>
