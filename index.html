@@ -117,6 +117,7 @@
 <nav class="nav">
   <span class="nav-brand">🏊 SizeFit</span>
   <button class="nav-tab active" onclick="showPage('search',this)">사이즈 찾기</button>
+  <button class="nav-tab" onclick="showPage('mydata',this)">내 정보 입력</button>
   <button class="nav-tab" onclick="showPage('admin',this)">어드민</button>
 </nav>
 
@@ -129,8 +130,8 @@
   <div class="card">
     <h2>신체 정보</h2>
     <div class="field-grid">
-      <div class="field"><label>키 (cm)</label><input type="number" id="s-height" placeholder="예: 165"></div>
-      <div class="field"><label>몸무게 (kg)</label><input type="number" id="s-weight" placeholder="예: 55"></div>
+      <div class="field"><label>키 (cm) <span style="color:var(--coral)">*</span></label><input type="number" id="s-height" placeholder="예: 165"></div>
+      <div class="field"><label>몸무게 (kg) <span style="color:var(--coral)">*</span></label><input type="number" id="s-weight" placeholder="예: 55"></div>
       <div class="field"><label>토르소 (cm) <span style="font-weight:300;font-size:11px;">선택</span></label><input type="number" id="s-torso" placeholder="예: 68"></div>
       <div class="field"><label>가슴둘레 (cm) <span style="font-weight:300;font-size:11px;">선택</span></label><input type="number" id="s-bust" placeholder="예: 85"></div>
     </div>
@@ -142,7 +143,7 @@
   <div class="card">
     <h2>브랜드 / 모델</h2>
     <div class="field-grid">
-      <div class="field"><label>브랜드 *</label>
+      <div class="field"><label>브랜드 <span style="color:var(--coral)">*</span></label>
         <select id="s-brand" onchange="onBrandChange()">
           <option value="">브랜드 선택</option>
         </select>
@@ -156,6 +157,60 @@
   </div>
   <button class="btn btn-primary" onclick="doSearch()">사이즈 추천받기</button>
   <div id="search-result" style="margin-top:1.5rem"></div>
+</div>
+
+<!-- ══ MY DATA ══ -->
+<div class="page" id="page-mydata">
+  <div class="hero">
+    <h1>내 착용 정보<br>남기기</h1>
+    <p>직접 입어봤던 수영복 정보를 남겨주세요. 더 정확한 추천에 도움이 돼요 🙏</p>
+  </div>
+
+  <div class="card">
+    <h2>내 신체 정보</h2>
+    <div class="field-grid">
+      <div class="field"><label>키 (cm) <span style="color:var(--coral)">*</span></label><input type="number" id="u-height" placeholder="예: 165"></div>
+      <div class="field"><label>몸무게 (kg) <span style="color:var(--coral)">*</span></label><input type="number" id="u-weight" placeholder="예: 55"></div>
+      <div class="field"><label>토르소 (cm) <span style="font-weight:300;font-size:11px;">선택</span></label><input type="number" id="u-torso" placeholder="예: 68"></div>
+      <div class="field"><label>가슴둘레 (cm) <span style="font-weight:300;font-size:11px;">선택</span></label><input type="number" id="u-bust" placeholder="예: 85"></div>
+      <div class="field"><label>허리둘레 (cm) <span style="font-weight:300;font-size:11px;">선택</span></label><input type="number" id="u-waist" placeholder="예: 65"></div>
+      <div class="field"><label>엉덩이둘레 (cm) <span style="font-weight:300;font-size:11px;">선택</span></label><input type="number" id="u-hip" placeholder="예: 90"></div>
+    </div>
+    <div style="margin-top:12px">
+      <div class="section-label">신체 특징 <span style="font-weight:300;font-size:11px;text-transform:none;">선택</span></div>
+      <div class="tag-grid" id="u-tags"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>착용 수영복 정보</h2>
+    <div class="field-grid">
+      <div class="field"><label>브랜드 <span style="color:var(--coral)">*</span></label>
+        <select id="u-brand" onchange="onUserBrandChange()"><option value="">브랜드 선택</option></select>
+      </div>
+      <div class="field"><label>모델 <span style="font-weight:300;font-size:11px;">선택</span></label>
+        <select id="u-model"><option value="">모델 선택 안 함</option></select>
+      </div>
+      <div class="field"><label>입은 사이즈 <span style="color:var(--coral)">*</span></label>
+        <input type="text" id="u-size" placeholder="예: M, 55, 85B">
+      </div>
+      <div class="field"><label>핏 평가 <span style="color:var(--coral)">*</span></label>
+        <select id="u-fit">
+          <option value="fit">딱 맞음 ✅</option>
+          <option value="small">작았음</option>
+          <option value="vsmall">많이 작았음</option>
+          <option value="big">컸음</option>
+          <option value="vbig">많이 컸음</option>
+        </select>
+      </div>
+      <div class="field full"><label>메모 <span style="font-weight:300;font-size:11px;">선택</span></label>
+        <input type="text" id="u-memo" placeholder="예: 어깨끈이 짧았음, 컵이 작은 편">
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="submitUserData()">제출하기</button>
+  <div id="user-submit-result" style="margin-top:1rem"></div>
 </div>
 
 <!-- ══ ADMIN ══ -->
@@ -238,6 +293,7 @@
       </div>
     </div>
 
+    <!-- 공식 사이즈표는 구글 시트 '공식사이즈표' 탭에 직접 입력 후 가져오기 -->
     <div style="margin-top:1rem;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-coral btn-sm" onclick="showAddEntry()">+ 착용 데이터 추가</button>
     </div>
@@ -259,6 +315,7 @@
     <!-- 구글 시트 연동 -->
     <div class="card" style="margin-top:1.25rem;border-color:rgba(26,95,122,0.3)">
       <h2>📊 구글 시트 연동</h2>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">시트에는 <b>착용데이터</b>, <b>공식사이즈표</b>, <b>유저제출</b> 탭이 자동 생성돼요.<br>공식 사이즈표는 시트의 <b>공식사이즈표</b> 탭에 직접 입력하세요.</p>
       <div class="field" style="margin-bottom:12px">
         <label>Apps Script 웹앱 URL</label>
         <input type="text" id="sheet-url" placeholder="https://script.google.com/macros/s/…/exec" oninput="saveSheetUrl()">
@@ -368,11 +425,29 @@
     } catch(e) { db = { brands:{}, models:{}, entries:[], tags:[...DEFAULT_TAGS] }; }
   }
 
-  function saveDB() {
+  function saveDB(silent) {
     try {
       localStorage.setItem(SK, JSON.stringify(db));
-      toast('저장되었습니다');
+      if (!silent) toast('저장되었습니다');
+      if (getSheetUrl()) autoSyncToSheet();
     } catch(e) { toast('저장 실패'); }
+  }
+
+  async function autoSyncToSheet() {
+    const url = getSheetUrl();
+    if (!url) return;
+    try {
+      setSyncStatus('⏳ 시트에 자동 저장 중...');
+      const res = await fetch(url, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'sync', entries: dbToSheetEntries() }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setSyncStatus(`✅ 시트 자동 저장 완료 (${new Date().toLocaleTimeString()})`);
+    } catch(err) {
+      setSyncStatus('⚠️ 시트 자동 저장 실패: ' + err.message, true);
+    }
   }
 
   function toast(msg) {
@@ -415,7 +490,11 @@
     document.getElementById('page-' + p).classList.add('active');
     btn.classList.add('active');
     if (p === 'search') { renderSearchTags(); populateSearchDropdowns(); }
-    if (p === 'admin') { renderAdminTags(); renderBrandList(); loadSheetUrlInput(); }
+    if (p === 'mydata') { renderUserTags(); populateUserDropdowns(); }
+    if (p === 'admin') {
+      renderAdminTags(); renderBrandList(); loadSheetUrlInput();
+      if (getSheetUrl()) autoSyncFromSheet();
+    }
   }
 
   // ── 태그 ──
@@ -512,22 +591,25 @@
 
     let html = '';
     Object.keys(groups).forEach(key => {
-      const result = recommendSize(groups[key], height, weight, torso, bust, tags);
+      const modelId = key === '__brand__' ? null : key;
+      const result = recommendSize(groups[key], height, weight, torso, bust, tags, bid, modelId);
       if (!result) return;
       const modelName = key === '__brand__' ? null : (db.models[key] ? db.models[key].name : null);
       const note = (key !== '__brand__' && db.models[key] && db.models[key].note) ? db.models[key].note : result.note;
       const label = modelName ? `${brand.name} · ${modelName}` : brand.name;
 
-      // 보정 배지
+      // 근거 배지
       let basisBadge = '';
-      if (result.shifted) {
+      if (result.fit === 'official') {
+        basisBadge = `<div style="margin-top:8px;font-size:12px;opacity:.85">📋 브랜드 공식 사이즈표 기준</div>`;
+      } else if (result.shifted) {
         const dir = result.delta > 0 ? '⬆️ 업' : '⬇️ 다운';
         const steps = Math.abs(result.delta);
         basisBadge = `<div class="note-box" style="margin-top:10px;background:rgba(255,255,255,.25)">
-          📊 근거 데이터: <strong>${result.originalSize}</strong> 입었을 때 <em>${fitLabel(result.fit)}</em> → ${steps}사이즈 ${dir} 추천
+          📊 근거: <strong>${result.originalSize}</strong> 입었을 때 <em>${fitLabel(result.fit)}</em> → ${steps}사이즈 ${dir} 추천
         </div>`;
       } else if (result.fit === 'fit') {
-        basisBadge = `<div style="margin-top:8px;font-size:12px;opacity:.7">✅ 유사 체형이 딱 맞았던 사이즈 기반</div>`;
+        basisBadge = `<div style="margin-top:8px;font-size:12px;opacity:.7">✅ ${result.basis || '유사 체형 착용 데이터 기반'}</div>`;
       }
 
       html += `<div class="result">
@@ -542,8 +624,243 @@
     resEl.innerHTML = html || '<div class="no-result">유사한 데이터를 찾지 못했어요. 더 많은 착용 데이터가 필요합니다.</div>';
   }
 
-  // 사이즈 순서표 — 브랜드마다 다르지만 일반적인 순서
-  const SIZE_ORDERS = [
+  // ════════════════════════════════════════════════════
+  // 추천 로직 v3 — 공식 사이즈표 우선 + 착용 데이터 보완
+  // ════════════════════════════════════════════════════
+  //
+  // [공식 우선] 해당 브랜드/모델의 공식 사이즈표가 있으면:
+  //   → 내 키·몸무게·토르소가 범위 안에 들어가는 사이즈 반환
+  //   → 범위 밖이면 → 착용 데이터 로직으로 내려감
+  //
+  // [착용 데이터] 아래 단계 순서대로, 찾으면 바로 반환:
+  //   1단계: 키·몸무게 완전 일치 (±1) + fit='fit'
+  //   2단계: 키±3 + 몸무게±3 + fit='fit'
+  //   3단계: 키±3 (몸무게는 가장 가까운 순) + fit='fit'
+  //   4단계: 몸무게±3 (키는 가장 가까운 순) + fit='fit'
+  //   5단계: 전체에서 가장 가까운 fit='fit'
+  //   6단계: 전체에서 가장 가까운 fit!='fit' → 사이즈 보정
+  //          보정 기준: 작았음=+1사이즈(키+3/몸무게+3 차이), 컸음=-1
+  //
+  // ★ 각 단계 동점 시 → 태그 일치 수 많은 순
+  // ════════════════════════════════════════════════════
+
+  function recommendSize(entries, height, weight, torso, bust, userTags, brandId, modelId) {
+
+    // ── 공식 사이즈표 먼저 확인 ──
+    const officialResult = checkOfficialSize(brandId, modelId, height, weight, torso);
+    if (officialResult) return officialResult;
+
+    // ── 착용 데이터 로직 ──
+    const fitEntries  = entries.filter(e => !e.fit || e.fit === 'fit');
+    const restEntries = entries.filter(e => e.fit && e.fit !== 'fit');
+
+    function tagScore(e) {
+      if (!userTags || userTags.length === 0) return 0;
+      return (userTags.filter(t => (e.tags||[]).includes(t))).length;
+    }
+
+    // 거리 점수: 키 1cm = 1/3사이즈, 몸무게 1kg = 1/3사이즈 → 3배 단위로 비교
+    // 토르소 있으면 보조 가중치 (키와 상관관계 높으므로 0.5 가중)
+    function distScore(e) {
+      let score = 0, count = 0;
+      if (e.height) { score += Math.abs(e.height - height);      count += 3; }
+      if (e.weight) { score += Math.abs(e.weight - weight);      count += 3; }
+      if (torso && e.torso) { score += Math.abs(e.torso - torso) * 0.5; count += 1; }
+      if (bust  && e.bust)  { score += Math.abs(e.bust  - bust)  * 0.3; count += 1; }
+      return count === 0 ? Infinity : score / count;
+    }
+
+    function best(pool) {
+      if (!pool.length) return null;
+      return pool
+        .map(e => ({ e, dist: distScore(e), tag: tagScore(e) }))
+        .sort((a,b) => a.dist - b.dist || b.tag - a.tag)[0];
+    }
+
+    function filterFit(condFn) {
+      return fitEntries.filter(condFn);
+    }
+
+    // 1단계
+    let pool = filterFit(e =>
+      e.height && Math.abs(e.height - height) <= 1 &&
+      e.weight && Math.abs(e.weight - weight) <= 1);
+    let b = best(pool);
+    if (b) return buildResult(b.e, 'fit', '키·몸무게 완전 일치');
+
+    // 2단계
+    pool = filterFit(e =>
+      e.height && Math.abs(e.height - height) <= 3 &&
+      e.weight && Math.abs(e.weight - weight) <= 3);
+    b = best(pool);
+    if (b) return buildResult(b.e, 'fit', '키·몸무게 근접 (±3)');
+
+    // 3단계: 키 ±3, 몸무게는 거리 점수로 정렬
+    pool = filterFit(e => e.height && Math.abs(e.height - height) <= 3);
+    b = best(pool);
+    if (b) return buildResult(b.e, 'fit', '키 근접 (±3cm)');
+
+    // 4단계: 몸무게 ±3, 키는 거리 점수로 정렬
+    pool = filterFit(e => e.weight && Math.abs(e.weight - weight) <= 3);
+    b = best(pool);
+    if (b) return buildResult(b.e, 'fit', '몸무게 근접 (±3kg)');
+
+    // 5단계: fit='fit' 전체, 거리 제한 없음
+    b = best(fitEntries);
+    if (b && b.dist < 999) return buildResult(b.e, 'fit', '가장 유사한 체형 기반');
+
+    // 6단계: fit!='fit' 데이터 → 사이즈 보정
+    // 작았음(small) = 입은 사이즈보다 1업 → 키+5/몸무게+5 차이에 해당
+    // 컸음(big) = 입은 사이즈보다 1다운 → 키-5/몸무게-5 차이에 해당
+    if (restEntries.length > 0) {
+      const FIT_OFFSET = { small:5, vsmall:10, big:-5, vbig:-10 };
+      const scored = restEntries.map(e => {
+        const offset = FIT_OFFSET[e.fit] || 0;
+        // 보정된 체형 = 이 사람의 키·몸무게에서 offset만큼 떨어진 지점이 "딱 맞는 체형"
+        const adjH = (e.height || height) + offset;
+        const adjW = (e.weight || weight) + offset;
+        const dH = Math.abs(adjH - height);
+        const dW = Math.abs(adjW - weight);
+        return { e, dist: dH + dW, tag: tagScore(e) };
+      }).sort((a,b) => a.dist - b.dist || b.tag - a.tag);
+
+      const bestRest = scored[0].e;
+      const { size, shifted, delta } = shiftSize(bestRest.size, bestRest.fit);
+      return {
+        size, fit: bestRest.fit, originalSize: bestRest.size,
+        shifted, delta, basis: '착용 데이터 기반 사이즈 보정',
+        memo: bestRest.memo, note: bestRest.note
+      };
+    }
+
+    return null;
+  }
+
+  // ── 공식 사이즈표 체크 ──
+  function checkOfficialSize(brandId, modelId, height, weight, torso) {
+    const officials = db.official || [];
+    // 모델 일치 우선, 없으면 브랜드 전체
+    const candidates = [
+      ...officials.filter(o => o.brandId === brandId && o.modelId === modelId),
+      ...officials.filter(o => o.brandId === brandId && !o.modelId),
+    ];
+    if (!candidates.length) return null;
+
+    for (const official of candidates) {
+      for (const row of (official.rows || [])) {
+        const inH  = (!row.heightMin || height >= row.heightMin) && (!row.heightMax || height <= row.heightMax);
+        const inW  = (!row.weightMin || weight >= row.weightMin) && (!row.weightMax || weight <= row.weightMax);
+        const inT  = !torso || !row.torsoMin || (torso >= row.torsoMin && (!row.torsoMax || torso <= row.torsoMax));
+        if (inH && inW && inT) {
+          return {
+            size: row.size, fit: 'official', shifted: false, delta: 0,
+            basis: '공식 사이즈표 기준',
+            memo: row.memo || '', note: official.note || ''
+          };
+        }
+      }
+    }
+    return null; // 범위 밖 → 착용 데이터로 내려감
+  }
+
+  function buildResult(e, fit, basis) {
+    return { size: e.size, fit, shifted: false, delta: 0, basis, memo: e.memo, note: e.note };
+  }
+
+  // ── 유저 데이터 페이지 ──
+  function renderUserTags() {
+    const el = document.getElementById('u-tags');
+    if (!el) return;
+    el.innerHTML = db.tags.map(t => `<span class="tag" onclick="toggleTag(this)">${t}</span>`).join('');
+  }
+
+  function populateUserDropdowns() {
+    const bSel = document.getElementById('u-brand');
+    if (!bSel) return;
+    bSel.innerHTML = '<option value="">브랜드 선택</option>';
+    Object.keys(db.brands).forEach(id => {
+      const o = document.createElement('option');
+      o.value = id; o.textContent = db.brands[id].name;
+      bSel.appendChild(o);
+    });
+    document.getElementById('u-model').innerHTML = '<option value="">모델 선택 안 함</option>';
+  }
+
+  function onUserBrandChange() {
+    const bid = document.getElementById('u-brand').value;
+    const mSel = document.getElementById('u-model');
+    mSel.innerHTML = '<option value="">모델 선택 안 함</option>';
+    if (!bid) return;
+    Object.keys(db.models).filter(id => db.models[id].brandId === bid).forEach(id => {
+      const o = document.createElement('option');
+      o.value = id; o.textContent = db.models[id].name;
+      mSel.appendChild(o);
+    });
+  }
+
+  function submitUserData() {
+    const height = parseFloat(document.getElementById('u-height').value);
+    const weight = parseFloat(document.getElementById('u-weight').value);
+    const bid    = document.getElementById('u-brand').value;
+    const size   = document.getElementById('u-size').value.trim();
+    const resEl  = document.getElementById('user-submit-result');
+
+    if (!height || !weight) { resEl.innerHTML = '<div class="no-result">키와 몸무게는 필수예요!</div>'; return; }
+    if (!bid)   { resEl.innerHTML = '<div class="no-result">브랜드를 선택해 주세요</div>'; return; }
+    if (!size)  { resEl.innerHTML = '<div class="no-result">입은 사이즈를 입력해 주세요</div>'; return; }
+
+    const mid   = document.getElementById('u-model').value || null;
+    const fit   = document.getElementById('u-fit').value;
+    const memo  = document.getElementById('u-memo').value.trim();
+    const torso = parseFloat(document.getElementById('u-torso').value) || undefined;
+    const bust  = parseFloat(document.getElementById('u-bust').value) || undefined;
+    const waist = parseFloat(document.getElementById('u-waist').value) || undefined;
+    const hip   = parseFloat(document.getElementById('u-hip').value) || undefined;
+    const tags  = [...document.querySelectorAll('#u-tags .tag.selected')].map(t => t.textContent);
+
+    const brandName = db.brands[bid]?.name || '';
+    const modelName = mid && db.models[mid] ? db.models[mid].name : '';
+
+    // 유저 제출 데이터 별도 저장
+    const userData = {
+      submittedAt: new Date().toISOString(),
+      brandName, modelName, size, fit,
+      height, weight,
+      ...(torso && { torso }), ...(bust && { bust }),
+      ...(waist && { waist }), ...(hip && { hip }),
+      tags, memo,
+      status: '검수대기'
+    };
+
+    // localStorage에 유저 제출 목록으로 저장
+    const userSubmissions = JSON.parse(localStorage.getItem('swimfit-user-submissions') || '[]');
+    userSubmissions.push(userData);
+    localStorage.setItem('swimfit-user-submissions', JSON.stringify(userSubmissions));
+
+    // 구글 시트에도 바로 전송 (URL 있을 때)
+    const sheetUrl = getSheetUrl();
+    if (sheetUrl) {
+      fetch(sheetUrl, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'submitUser', entry: userData }),
+      }).catch(() => {}); // 시트 전송 실패해도 로컬엔 저장됨
+    }
+
+    // 폼 초기화
+    ['u-height','u-weight','u-torso','u-bust','u-waist','u-hip','u-size','u-memo'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('u-brand').value = '';
+    document.getElementById('u-model').innerHTML = '<option value="">모델 선택 안 함</option>';
+    document.querySelectorAll('#u-tags .tag').forEach(t => t.classList.remove('selected'));
+    document.getElementById('u-fit').value = 'fit';
+
+    resEl.innerHTML = `<div style="background:#e6f4ed;border-radius:var(--radius);padding:1.25rem;color:#1a7a45;font-size:14px">
+      ✅ 제출 완료! 소중한 데이터 감사해요 🙏<br>
+      <span style="font-size:12px;opacity:.8;margin-top:4px;display:block">검수 후 추천 데이터에 반영될 예정이에요</span>
+    </div>`;
+    setTimeout(() => { resEl.innerHTML = ''; }, 4000);
+  }
     ['XS','S','M','L','XL','XXL'],
     ['44','55','66','77','88'],
     ['32','34','36','38','40','42','44','46'],
@@ -951,25 +1268,71 @@
     }
   }
 
-  // ⬇️ 시트 → 앱
+  // ⬇️ 시트 → 앱 (수동 버튼용)
   async function syncFromSheet() {
     const url = getSheetUrl();
     if (!url) { setSyncStatus('⚠️ 먼저 Apps Script URL을 입력해 주세요', true); return; }
     setSyncStatus('⏳ 시트에서 가져오는 중...');
     try {
-      const res  = await fetch(url + '?action=read');
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      const newEntries = sheetEntriesToDb(data.entries);
-      db.entries = newEntries;
-      saveDB();
-      renderBrandList();
-      populateSearchDropdowns();
-      setSyncStatus(`✅ 완료! 시트에서 ${newEntries.length}건을 가져왔어요 (${new Date().toLocaleTimeString()})`);
+      const count = await pullFromSheet();
+      setSyncStatus(`✅ 완료! 시트에서 ${count}건을 가져왔어요 (${new Date().toLocaleTimeString()})`);
       toast('시트 가져오기 완료!');
     } catch(err) {
       setSyncStatus('❌ 오류: ' + err.message, true);
     }
+  }
+
+  // ⬇️ 시트 → 앱 (자동용 — 어드민 탭 열 때 조용히 실행)
+  async function autoSyncFromSheet() {
+    const url = getSheetUrl();
+    if (!url) return;
+    setSyncStatus('⏳ 시트에서 최신 데이터 불러오는 중...');
+    try {
+      const count = await pullFromSheet();
+      setSyncStatus(`✅ 시트에서 자동으로 ${count}건 불러왔어요 (${new Date().toLocaleTimeString()})`);
+    } catch(err) {
+      setSyncStatus('⚠️ 자동 불러오기 실패 (수동으로 시도해 주세요)', true);
+    }
+  }
+
+  // 실제 시트 읽기 공통 로직
+  async function pullFromSheet() {
+    const url = getSheetUrl();
+    const res  = await fetch(url + '?action=read');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const newEntries = sheetEntriesToDb(data.entries);
+    db.entries = newEntries;
+    // 공식 사이즈표도 함께 반영
+    if (data.official && data.official.length > 0) {
+      db.official = officialSheetToDb(data.official);
+    }
+    localStorage.setItem(SK, JSON.stringify(db));
+    renderBrandList();
+    populateSearchDropdowns();
+    return newEntries.length;
+  }
+
+  // 시트 공식사이즈표 rows → db.official 형태로 변환
+  function officialSheetToDb(rows) {
+    const map = {};
+    rows.forEach(r => {
+      if (!r.brandName || !r.size) return;
+      const bid = ensureBrand(r.brandName);
+      const mid = ensureModel(bid, r.modelName) || null;
+      const key = bid + '|' + (mid || '');
+      if (!map[key]) map[key] = { brandId: bid, modelId: mid, rows: [] };
+      const row = { size: r.size };
+      if (r.heightMin) row.heightMin = parseFloat(r.heightMin);
+      if (r.heightMax) row.heightMax = parseFloat(r.heightMax);
+      if (r.weightMin) row.weightMin = parseFloat(r.weightMin);
+      if (r.weightMax) row.weightMax = parseFloat(r.weightMax);
+      if (r.torsoMin)  row.torsoMin  = parseFloat(r.torsoMin);
+      if (r.torsoMax)  row.torsoMax  = parseFloat(r.torsoMax);
+      if (r.memo)      row.memo      = r.memo;
+      map[key].rows.push(row);
+    });
+    return Object.values(map);
   }
 
   // ── 수정 모달 ──
