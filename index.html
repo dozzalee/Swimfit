@@ -206,6 +206,11 @@
       <div class="field full"><label>메모 <span style="font-weight:300;font-size:11px;">선택</span></label>
         <input type="text" id="u-memo" placeholder="예: 어깨끈이 짧았음, 컵이 작은 편">
       </div>
+      <div class="field full">
+        <label>브랜드·모델 특징 <span style="font-weight:300;font-size:11px;">선택 — 자유롭게 적어주세요</span></label>
+        <textarea id="u-brand-feature" placeholder="예: 상체가 긴 편에 맞게 나옴, 어깨끈 길이 짧음, 전체적으로 작게 나옴..." style="min-height:60px"></textarea>
+        <span style="font-size:11px;color:var(--muted);margin-top:4px">입력하신 내용은 검토 후 브랜드·모델 특징 태그로 만들어져요</span>
+      </div>
     </div>
   </div>
 
@@ -231,13 +236,30 @@
       <button class="btn btn-outline btn-sm" onclick="adminLogout()">로그아웃</button>
     </div>
 
-    <!-- 태그 관리 -->
+    <!-- 신체 특징 태그 관리 -->
     <div class="card">
       <h2>신체 특징 태그 관리</h2>
       <div class="tag-grid" id="admin-tag-list"></div>
       <div class="tag-add-row">
         <input type="text" id="new-tag-input" placeholder="새 태그 입력 (예: 상반신이 짧은 편)" onkeydown="if(event.key==='Enter')addCustomTag()">
         <button class="btn btn-outline btn-sm" onclick="addCustomTag()">+ 추가</button>
+      </div>
+    </div>
+
+    <!-- 브랜드·모델 특징 태그 관리 -->
+    <div class="card">
+      <h2>브랜드·모델 특징 태그 관리</h2>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">유저가 제출한 특징 텍스트를 검토 후 태그로 만들어두세요. 어드민 데이터 입력 시 활용할 수 있어요.</p>
+
+      <!-- 유저 제출 특징 텍스트 목록 -->
+      <div id="pending-features-list" style="margin-bottom:14px"></div>
+
+      <!-- 등록된 태그 -->
+      <div class="section-label" style="margin-bottom:8px">등록된 태그</div>
+      <div class="tag-grid" id="brand-feature-tag-list"></div>
+      <div class="tag-add-row">
+        <input type="text" id="new-bf-tag-input" placeholder="새 태그 직접 입력 (예: 전체적으로 작게 나옴)" onkeydown="if(event.key==='Enter')addBrandFeatureTag()">
+        <button class="btn btn-outline btn-sm" onclick="addBrandFeatureTag()">+ 추가</button>
       </div>
     </div>
 
@@ -492,7 +514,8 @@
     if (p === 'search') { renderSearchTags(); populateSearchDropdowns(); }
     if (p === 'mydata') { renderUserTags(); populateUserDropdowns(); }
     if (p === 'admin') {
-      renderAdminTags(); renderBrandList(); loadSheetUrlInput();
+      renderAdminTags(); renderBrandFeatureTags(); renderPendingFeatures();
+      renderBrandList(); loadSheetUrlInput();
       if (getSheetUrl()) autoSyncFromSheet();
     }
   }
@@ -528,6 +551,113 @@
   function removeTag(i) {
     db.tags.splice(i, 1);
     saveDB(); renderAdminTags();
+  }
+
+  // ── 브랜드·모델 특징 태그 ──
+  // db.brandFeatureTags = ['전체적으로 작게 나옴', '어깨끈 짧음', ...]
+
+  function renderBrandFeatureTags() {
+    const el = document.getElementById('brand-feature-tag-list');
+    if (!el) return;
+    const tags = db.brandFeatureTags || [];
+    if (!tags.length) {
+      el.innerHTML = '<span style="font-size:13px;color:var(--muted)">아직 등록된 태그가 없어요</span>';
+      return;
+    }
+    el.innerHTML = tags.map((t, i) =>
+      `<span class="tag selected" style="background:var(--coral);border-color:var(--coral)">
+        ${t}
+        <span class="del" onclick="editBrandFeatureTag(${i})" style="opacity:.7;font-size:11px">✏️</span>
+        <span class="del" onclick="removeBrandFeatureTag(${i})">×</span>
+      </span>`
+    ).join('');
+  }
+
+  function addBrandFeatureTag() {
+    const inp = document.getElementById('new-bf-tag-input');
+    const val = inp.value.trim();
+    if (!val) return;
+    if (!db.brandFeatureTags) db.brandFeatureTags = [];
+    if (db.brandFeatureTags.includes(val)) { toast('이미 있는 태그예요'); return; }
+    db.brandFeatureTags.push(val);
+    saveDB(true); renderBrandFeatureTags(); inp.value = '';
+  }
+
+  function removeBrandFeatureTag(i) {
+    if (!confirm('이 태그를 삭제할까요?')) return;
+    db.brandFeatureTags.splice(i, 1);
+    saveDB(true); renderBrandFeatureTags();
+  }
+
+  function editBrandFeatureTag(i) {
+    const cur = db.brandFeatureTags[i];
+    const newVal = prompt('태그 수정:', cur);
+    if (!newVal || !newVal.trim() || newVal.trim() === cur) return;
+    db.brandFeatureTags[i] = newVal.trim();
+    saveDB(true); renderBrandFeatureTags();
+  }
+
+  // ── 유저 제출 특징 텍스트 — pending 목록 렌더링 ──
+  function renderPendingFeatures() {
+    const el = document.getElementById('pending-features-list');
+    if (!el) return;
+    const pending = JSON.parse(localStorage.getItem('swimfit-pending-features') || '[]');
+    const unreviewed = pending.filter(p => !p.reviewed);
+    if (!unreviewed.length) {
+      el.innerHTML = '<p style="font-size:12px;color:var(--muted);margin-bottom:8px">검토 대기 중인 특징 텍스트가 없어요</p>';
+      return;
+    }
+    el.innerHTML = `
+      <div class="section-label" style="margin-bottom:8px">유저 제출 — 검토 대기 (${unreviewed.length}건)</div>
+      ${unreviewed.map((p, i) => `
+        <div style="background:var(--ocean-light);border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:13px">
+          <div style="font-weight:500;color:var(--text);margin-bottom:4px">${p.brandName}${p.modelName ? ' · ' + p.modelName : ''}</div>
+          <div style="color:var(--text);margin-bottom:8px">"${p.text}"</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" style="width:auto" onclick="promotePendingFeature(${i})">+ 태그로 등록</button>
+            <button class="btn btn-danger btn-sm" onclick="dismissPendingFeature(${i})">무시</button>
+          </div>
+        </div>
+      `).join('')}`;
+  }
+
+  function promotePendingFeature(i) {
+    const pending = JSON.parse(localStorage.getItem('swimfit-pending-features') || '[]');
+    const unreviewed = pending.filter(p => !p.reviewed);
+    const item = unreviewed[i];
+    const val = prompt('태그로 등록할 내용을 확인/수정하세요:', item.text);
+    if (!val || !val.trim()) return;
+    if (!db.brandFeatureTags) db.brandFeatureTags = [];
+    if (!db.brandFeatureTags.includes(val.trim())) {
+      db.brandFeatureTags.push(val.trim());
+      saveDB(true);
+    }
+    // reviewed 처리
+    const allPending = JSON.parse(localStorage.getItem('swimfit-pending-features') || '[]');
+    let count = 0;
+    for (let j = 0; j < allPending.length; j++) {
+      if (!allPending[j].reviewed) {
+        if (count === i) { allPending[j].reviewed = true; break; }
+        count++;
+      }
+    }
+    localStorage.setItem('swimfit-pending-features', JSON.stringify(allPending));
+    renderBrandFeatureTags(); renderPendingFeatures();
+    toast('태그로 등록했어요!');
+  }
+
+  function dismissPendingFeature(i) {
+    const allPending = JSON.parse(localStorage.getItem('swimfit-pending-features') || '[]');
+    let count = 0;
+    for (let j = 0; j < allPending.length; j++) {
+      if (!allPending[j].reviewed) {
+        if (count === i) { allPending[j].reviewed = true; break; }
+        count++;
+      }
+    }
+    localStorage.setItem('swimfit-pending-features', JSON.stringify(allPending));
+    renderPendingFeatures();
+    toast('무시했어요');
   }
 
   // ── 검색 드롭다운 ──
@@ -812,6 +942,7 @@
     const mid   = document.getElementById('u-model').value || null;
     const fit   = document.getElementById('u-fit').value;
     const memo  = document.getElementById('u-memo').value.trim();
+    const brandFeature = document.getElementById('u-brand-feature').value.trim();
     const torso = parseFloat(document.getElementById('u-torso').value) || undefined;
     const bust  = parseFloat(document.getElementById('u-bust').value) || undefined;
     const waist = parseFloat(document.getElementById('u-waist').value) || undefined;
@@ -829,6 +960,7 @@
       ...(torso && { torso }), ...(bust && { bust }),
       ...(waist && { waist }), ...(hip && { hip }),
       tags, memo,
+      brandFeature,   // 브랜드·모델 특징 자유 텍스트
       status: '검수대기'
     };
 
@@ -846,8 +978,15 @@
       }).catch(() => {}); // 시트 전송 실패해도 로컬엔 저장됨
     }
 
+    // 유저 제출 특징 텍스트 → pending 목록에 별도 저장 (어드민 검토용)
+    if (brandFeature) {
+      const pending = JSON.parse(localStorage.getItem('swimfit-pending-features') || '[]');
+      pending.push({ brandName, modelName, text: brandFeature, submittedAt: new Date().toISOString(), reviewed: false });
+      localStorage.setItem('swimfit-pending-features', JSON.stringify(pending));
+    }
+
     // 폼 초기화
-    ['u-height','u-weight','u-torso','u-bust','u-waist','u-hip','u-size','u-memo'].forEach(id => {
+    ['u-height','u-weight','u-torso','u-bust','u-waist','u-hip','u-size','u-memo','u-brand-feature'].forEach(id => {
       document.getElementById(id).value = '';
     });
     document.getElementById('u-brand').value = '';
