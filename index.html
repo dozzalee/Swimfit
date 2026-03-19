@@ -455,25 +455,7 @@
     try {
       localStorage.setItem(SK, JSON.stringify(db));
       if (!silent) toast('저장되었습니다');
-      if (getSheetUrl()) autoSyncToSheet();
     } catch(e) { toast('저장 실패'); }
-  }
-
-  async function autoSyncToSheet() {
-    const url = getSheetUrl();
-    if (!url) return;
-    try {
-      setSyncStatus('⏳ 시트에 자동 저장 중...');
-      const res = await fetch(url, {
-        method: 'POST',
-        body: JSON.stringify({ action: 'sync', entries: dbToSheetEntries() }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setSyncStatus(`✅ 시트 자동 저장 완료 (${new Date().toLocaleTimeString()})`);
-    } catch(err) {
-      setSyncStatus('⚠️ 시트 자동 저장 실패: ' + err.message, true);
-    }
   }
 
   function toast(msg) {
@@ -520,7 +502,6 @@
     if (p === 'admin') {
       renderAdminTags(); renderBrandFeatureTags(); renderPendingFeatures();
       renderBrandList(); loadSheetUrlInput();
-      if (getSheetUrl()) autoSyncFromSheet();
     }
   }
 
