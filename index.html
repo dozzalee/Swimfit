@@ -514,7 +514,11 @@
   function renderAdminTags() {
     const el = document.getElementById('admin-tag-list');
     el.innerHTML = db.tags.map((t,i) =>
-      `<span class="tag selected">${t}<span class="del" onclick="removeTag(${i})">×</span></span>`
+      `<span class="tag selected">
+        ${t}
+        <span class="del" onclick="editBodyTag(${i})" style="opacity:.7;font-size:11px;margin-right:2px">✏️</span>
+        <span class="del" onclick="removeTag(${i})">×</span>
+      </span>`
     ).join('');
   }
 
@@ -534,8 +538,19 @@
   }
 
   function removeTag(i) {
+    if (!confirm(`"${db.tags[i]}" 태그를 삭제할까요?`)) return;
     db.tags.splice(i, 1);
-    saveDB(); renderAdminTags();
+    saveDB(true); renderAdminTags(); renderSearchTags();
+  }
+
+  function editBodyTag(i) {
+    const cur = db.tags[i];
+    const newVal = prompt('태그 이름 수정:', cur);
+    if (!newVal || !newVal.trim() || newVal.trim() === cur) return;
+    if (db.tags.includes(newVal.trim())) { toast('이미 있는 태그예요'); return; }
+    db.tags[i] = newVal.trim();
+    saveDB(true); renderAdminTags(); renderSearchTags();
+    toast('태그가 수정됐어요');
   }
 
   // ── 브랜드·모델 특징 태그 ──
@@ -1380,38 +1395,40 @@
   async function syncFromRaw() {
     const url = getSheetUrl();
     if (!url) { setSyncStatus('⚠️ 먼저 Apps Script URL을 입력해 주세요', true); return; }
+    if (!confirm('원본입력 탭의 데이터로 앱을 덮어씁니다.\n기존 앱 데이터는 시트 내용으로 교체돼요.\n계속할까요?')) return;
     setSyncStatus('⏳ 원본입력 탭에서 가져오는 중...');
     try {
       const res  = await fetch(url + '?action=readRaw');
       const data = await res.json();
       if (data.error) throw new Error(data.error);
+
+      // 공식사이즈표 반영
       if (data.official && data.official.length > 0) db.official = officialSheetToDb(data.official);
-      // 누적 — 기존 앱 데이터에 추가 (중복 제거)
-      const newEntries = sheetEntriesToDb(data.entries);
-      const added = mergeEntries(newEntries);
+
+      // 시트 태그도 함께 수집해서 db.tags에 병합
+      const sheetTags = collectTagsFromEntries(data.entries);
+      sheetTags.forEach(t => { if (!db.tags.includes(t)) db.tags.push(t); });
+
+      // 덮어쓰기 — 원본입력 탭 내용으로 완전 교체
+      db.entries = sheetEntriesToDb(data.entries);
       localStorage.setItem(SK, JSON.stringify(db));
-      renderBrandList(); populateSearchDropdowns();
-      setSyncStatus(`✅ 완료! ${added}건 추가됐어요 (기존 데이터 유지) — ${new Date().toLocaleTimeString()}`);
-      toast(`${added}건 추가 완료!`);
+      renderBrandList(); populateSearchDropdowns(); renderAdminTags(); renderSearchTags();
+      setSyncStatus(`✅ 완료! ${db.entries.length}건으로 교체됐어요 — ${new Date().toLocaleTimeString()}`);
+      toast(`${db.entries.length}건 불러오기 완료!`);
     } catch(err) {
       setSyncStatus('❌ 오류: ' + err.message, true);
     }
   }
 
-  // 중복 없이 누적 (브랜드+모델+사이즈+키+몸무게 동일하면 중복으로 판단)
-  function mergeEntries(newEntries) {
-    let added = 0;
-    newEntries.forEach(ne => {
-      const isDup = db.entries.some(e =>
-        e.brandId === ne.brandId &&
-        e.modelId === ne.modelId &&
-        e.size    === ne.size    &&
-        e.height  === ne.height  &&
-        e.weight  === ne.weight
-      );
-      if (!isDup) { db.entries.push(ne); added++; }
+  // 시트 entries에서 태그 목록 수집
+  function collectTagsFromEntries(rawEntries) {
+    const tags = new Set();
+    (rawEntries || []).forEach(e => {
+      const tagStr = e['신체특징태그'] || e.tags || '';
+      const arr = Array.isArray(tagStr) ? tagStr : String(tagStr).split(',').map(t => t.trim()).filter(Boolean);
+      arr.forEach(t => tags.add(t));
     });
-    return added;
+    return [...tags];
   }
 
   // ⬆️ 앱 → 착용데이터 탭 (백업용, 원본입력 탭 무관)
@@ -1434,29 +1451,6 @@
       toast('착용데이터 탭 내보내기 완료!');
     } catch(err) {
       setSyncStatus('❌ 오류: ' + err.message, true);
-    }
-  }
-
-  // ⬇️ 자동 (어드민 탭 열 때) — 원본입력에서 조용히 누적
-  async function autoSyncFromSheet() {
-    const url = getSheetUrl();
-    if (!url) return;
-    setSyncStatus('⏳ 원본입력 탭 최신 데이터 확인 중...');
-    try {
-      const res  = await fetch(url + '?action=readRaw');
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      if (data.official && data.official.length > 0) db.official = officialSheetToDb(data.official);
-      const newEntries = sheetEntriesToDb(data.entries);
-      const added = mergeEntries(newEntries);
-      localStorage.setItem(SK, JSON.stringify(db));
-      renderBrandList(); populateSearchDropdowns();
-      setSyncStatus(added > 0
-        ? `✅ 원본입력 탭에서 ${added}건 추가됐어요 — ${new Date().toLocaleTimeString()}`
-        : `✅ 최신 상태예요 — ${new Date().toLocaleTimeString()}`
-      );
-    } catch(err) {
-      setSyncStatus('⚠️ 자동 확인 실패 (수동으로 시도해 주세요)', true);
     }
   }
 
