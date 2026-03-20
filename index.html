@@ -337,19 +337,22 @@
     <!-- 구글 시트 연동 -->
     <div class="card" style="margin-top:1.25rem;border-color:rgba(26,95,122,0.3)">
       <h2>📊 구글 시트 연동</h2>
-      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">시트에는 <b>착용데이터</b>, <b>공식사이즈표</b>, <b>유저제출</b> 탭이 자동 생성돼요.<br>공식 사이즈표는 시트의 <b>공식사이즈표</b> 탭에 직접 입력하세요.</p>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        시트 탭 구조: <b>착용데이터</b> (내가 입력) · <b>착용데이터(유저)</b> (유저 제출) · <b>검색기록(유저)</b> (자동 기록) · <b>공식사이즈표</b> (읽기 전용)<br>
+        <b>착용데이터의 사본</b>은 시스템이 절대 건드리지 않아요.
+      </p>
       <div class="field" style="margin-bottom:12px">
         <label>Apps Script 웹앱 URL</label>
         <input type="text" id="sheet-url" placeholder="https://script.google.com/macros/s/…/exec" oninput="saveSheetUrl()">
         <span style="font-size:11px;color:var(--muted);margin-top:4px">설정 방법을 모르면 아래 '설정 방법 보기' 를 눌러보세요</span>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-        <button class="btn btn-outline" onclick="syncFromRaw()">⬇️ 원본입력 → 앱으로 가져오기</button>
-        <button class="btn btn-primary" style="width:auto" onclick="syncToSystem()">⬆️ 앱 → 착용데이터로 내보내기</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="btn btn-outline" onclick="syncFromWorn()">⬇️ 착용데이터 → 앱으로 가져오기</button>
+        <button class="btn btn-primary" style="width:auto" onclick="syncToWorn()">⬆️ 앱 → 착용데이터로 내보내기</button>
       </div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">
-        <b>원본입력 탭</b>에 데이터 붙여넣기 → <b>"원본입력 → 앱으로 가져오기"</b> 클릭 → 앱에 반영<br>
-        앱 데이터를 시트에 백업하고 싶을 때만 <b>"앱 → 착용데이터로 내보내기"</b> 사용
+        시트 <b>착용데이터</b> 탭에 데이터 붙여넣기 → <b>"착용데이터 → 앱으로 가져오기"</b> 클릭<br>
+        앱 데이터를 시트에 백업할 때 → <b>"앱 → 착용데이터로 내보내기"</b> (기존 데이터 덮어씌워짐)
       </div>
       <div id="sync-status" style="font-size:13px;color:var(--muted)"></div>
       <hr class="divider" style="margin:12px 0">
@@ -752,6 +755,59 @@
     });
 
     resEl.innerHTML = html || '<div class="no-result">유사한 데이터를 찾지 못했어요. 더 많은 착용 데이터가 필요합니다.</div>';
+
+    // 검색 기록 시트에 로그 (URL 있을 때만, 조용히)
+    const sheetUrl = getSheetUrl();
+    if (sheetUrl && html) {
+      const brand = db.brands[bid];
+      const model = mid ? db.models[mid] : null;
+      // 결과에서 첫 번째 사이즈와 근거 추출
+      const firstResult = Object.values(groups).map(g =>
+        recommendSize(g, height, weight, torso, bust, tags, bid,
+          Object.keys(groups).find(k => groups[k] === g) === '__brand__' ? null :
+          Object.keys(groups).find(k => groups[k] === g))
+      ).find(r => r);
+      fetch(sheetUrl, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'logSearch',
+          record: {
+            brandName:   brand ? brand.name : '',
+            modelName:   model ? model.name : '',
+            height, weight,
+            torso:       torso || '',
+            bust:        bust  || '',
+            tags,
+            resultSize:  firstResult ? firstResult.size  : '',
+            resultBasis: firstResult ? firstResult.basis || '' : '',
+          }
+        }),
+      }).catch(() => {}); // 실패해도 검색 결과에 영향 없음
+    }
+
+    // 검색 기록 전송 (시트 URL 있을 때만, 결과 있을 때만)
+    if (html && getSheetUrl()) {
+      const firstResult = Object.keys(groups).map(key => {
+        const modelId = key === '__brand__' ? null : key;
+        return recommendSize(groups[key], height, weight, torso, bust, tags, bid, modelId);
+      }).find(r => r);
+      sendSearchLog({
+        height, weight, torso, bust, tags,
+        brandName: brand.name,
+        modelName: mid && db.models[mid] ? db.models[mid].name : '',
+        resultSize: firstResult ? firstResult.size : '',
+        resultBasis: firstResult ? (firstResult.basis || '') : '',
+      });
+    }
+  }
+
+  function sendSearchLog(log) {
+    const url = getSheetUrl();
+    if (!url) return;
+    fetch(url, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'logSearch', log: { ...log, searchedAt: new Date().toISOString() } }),
+    }).catch(() => {}); // 실패해도 검색 결과엔 영향 없음
   }
 
   // ════════════════════════════════════════════════════
@@ -1392,27 +1448,20 @@
   }
 
   // ⬇️ 원본입력 탭 → 앱 (누적, 덮어쓰지 않음)
-  async function syncFromRaw() {
+  // ⬇️ 착용데이터 탭 → 앱 (덮어쓰기)
+  async function syncFromWorn() {
     const url = getSheetUrl();
     if (!url) { setSyncStatus('⚠️ 먼저 Apps Script URL을 입력해 주세요', true); return; }
-    if (!confirm('원본입력 탭의 데이터로 앱을 덮어씁니다.\n기존 앱 데이터는 시트 내용으로 교체돼요.\n계속할까요?')) return;
-    setSyncStatus('⏳ 원본입력 탭에서 가져오는 중...');
+    if (!confirm('착용데이터 탭의 내용으로 앱을 덮어씁니다.\n기존 앱 데이터는 시트 내용으로 교체돼요.\n계속할까요?')) return;
+    setSyncStatus('⏳ 착용데이터 탭에서 가져오는 중...');
     try {
-      const res  = await fetch(url + '?action=readRaw');
+      const res  = await fetch(url + '?action=readWorn');
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-
-      // 공식사이즈표 반영
       if (data.official && data.official.length > 0) db.official = officialSheetToDb(data.official);
-
-      // 시트 태그도 함께 수집해서 db.tags에 병합
-      const sheetTags = collectTagsFromEntries(data.entries);
-      sheetTags.forEach(t => { if (!db.tags.includes(t)) db.tags.push(t); });
-
-      // 덮어쓰기 — 원본입력 탭 내용으로 완전 교체
       db.entries = sheetEntriesToDb(data.entries);
       localStorage.setItem(SK, JSON.stringify(db));
-      renderBrandList(); populateSearchDropdowns(); renderAdminTags(); renderSearchTags();
+      renderBrandList(); populateSearchDropdowns();
       setSyncStatus(`✅ 완료! ${db.entries.length}건으로 교체됐어요 — ${new Date().toLocaleTimeString()}`);
       toast(`${db.entries.length}건 불러오기 완료!`);
     } catch(err) {
@@ -1420,35 +1469,24 @@
     }
   }
 
-  // 시트 entries에서 태그 목록 수집
-  function collectTagsFromEntries(rawEntries) {
-    const tags = new Set();
-    (rawEntries || []).forEach(e => {
-      const tagStr = e['신체특징태그'] || e.tags || '';
-      const arr = Array.isArray(tagStr) ? tagStr : String(tagStr).split(',').map(t => t.trim()).filter(Boolean);
-      arr.forEach(t => tags.add(t));
-    });
-    return [...tags];
-  }
-
-  // ⬆️ 앱 → 착용데이터 탭 (백업용, 원본입력 탭 무관)
-  async function syncToSystem() {
+  // ⬆️ 앱 → 착용데이터 탭 (덮어쓰기 백업)
+  async function syncToWorn() {
     const url = getSheetUrl();
     if (!url) { setSyncStatus('⚠️ 먼저 Apps Script URL을 입력해 주세요', true); return; }
     if (db.entries.length === 0) {
-      setSyncStatus('⚠️ 앱에 데이터가 없어요. 먼저 원본입력 탭에서 가져오세요', true);
-      return;
+      setSyncStatus('⚠️ 앱에 데이터가 없어요. 먼저 시트에서 가져오세요', true); return;
     }
+    if (!confirm('앱 데이터를 착용데이터 탭에 내보냅니다.\n시트의 기존 내용은 덮어씌워져요.\n계속할까요?')) return;
     setSyncStatus('⏳ 착용데이터 탭으로 내보내는 중...');
     try {
       const res = await fetch(url, {
         method: 'POST',
-        body: JSON.stringify({ action: 'syncSystem', entries: dbToSheetEntries() }),
+        body: JSON.stringify({ action: 'syncWorn', entries: dbToSheetEntries() }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setSyncStatus(`✅ 완료! ${data.count}건을 착용데이터 탭에 내보냈어요 — ${new Date().toLocaleTimeString()}`);
-      toast('착용데이터 탭 내보내기 완료!');
+      toast('내보내기 완료!');
     } catch(err) {
       setSyncStatus('❌ 오류: ' + err.message, true);
     }
